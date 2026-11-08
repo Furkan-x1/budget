@@ -16,6 +16,9 @@ A compact, single-user personal finance tracker for a private home network. One 
 - **Debts and receivables:** optional initial account movement; partial payments and collections update the linked account and remaining balance. Debt principal movements do not inflate normal income/expense totals.
 - **Savings goals:** link each goal to one account in the same currency/asset. Progress is calculated from that account balance, without creating a duplicate asset.
 - **Reports:** monthly income/expense bars, expense categories and daily net-worth history.
+- **Dark theme:** remembers the selected theme in the browser.
+- **Individual editing:** change the date, amount, account, category and description of one future salary/payment/installment without changing the recurring template. Past generated transactions can be edited like other transactions.
+- **Date format:** all full date fields use Turkish day-month-year format (GG.AA.YYYY).
 - **Quotes:** background refresh every 15 minutes; last successful values are retained and stale quotes are labelled.
 - **Backup:** download the SQLite database from the sidebar.
 - **Optional LAN password:** set BUDGET_PASSWORD for one Basic Auth password.
@@ -35,6 +38,17 @@ Edit .env and set BUDGET_PASSWORD to a long password when the LAN is shared. The
 ~~~bash
 docker compose up -d --build
 ~~~
+
+## Update without losing records
+
+The application stores records in the named Docker volume `budget_data`. Pulling a new version and rebuilding the container does not remove that volume. Before updating, download a database backup from the sidebar. Then, in the existing clone directory:
+
+~~~bash
+git pull
+docker compose up -d --build
+~~~
+
+**Do not run `docker compose down -v`** when updating; the `-v` option removes the persistent database volume. The new version creates only its additional `occurrence_overrides` table if it does not already exist. Existing accounts, entries, schedules, installment plans, debts and goals are kept.
 
 ## Docker Compose
 
