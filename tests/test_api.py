@@ -88,6 +88,20 @@ class BudgetApiSmokeTest(unittest.TestCase):
         self.assertEqual(goal.status_code, 200, goal.text)
         self.assertEqual(client.get("/api/goals").json()[0]["progress"], 1.5)
 
+        # Large TRY goal amounts are accepted, and a total goal tracks the
+        # same portfolio net-worth calculation used on the dashboard.
+        total_goal = client.post("/api/goals", json={
+            "name": "Toplam varlık hedefi", "target_amount": 500000,
+            "asset_code": "TRY", "account_id": None, "tracking_type": "total",
+        })
+        self.assertEqual(total_goal.status_code, 200, total_goal.text)
+        total_goals = client.get("/api/goals").json()
+        total_goal_item = next(g for g in total_goals if g["id"] == total_goal.json()["id"])
+        current_dashboard = client.get("/api/dashboard?month=2026-11").json()
+        self.assertEqual(total_goal_item["tracking_type"], "total")
+        self.assertEqual(total_goal_item["progress"], current_dashboard["total_net_worth"])
+        self.assertEqual(total_goal_item["target_amount"], 500000)
+
         category = client.post("/api/categories", json={"name": "Hobi", "kind": "expense"})
         self.assertEqual(category.status_code, 200, category.text)
         self.assertEqual(client.patch(f"/api/categories/{category.json()['id']}", json={
@@ -101,6 +115,9 @@ class BudgetApiSmokeTest(unittest.TestCase):
         self.assertEqual(analytics.status_code, 200, analytics.text)
         self.assertEqual(len(analytics.json()["monthly"]), 12)
         self.assertEqual(len(analytics.json()["net_worth_history"]), 1)
+        self.assertEqual(len(analytics.json()["daily"]), 30)
+        self.assertIn("savings_rate", analytics.json()["summary"])
+        self.assertIn("net", analytics.json()["monthly"][-1])
 
         # A transferred asset purchase/sale must not be counted as income or expense.
         self.assertEqual(dashboard.json()["income"], 0)
