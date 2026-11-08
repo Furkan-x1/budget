@@ -14,8 +14,8 @@ A compact, single-user personal finance tracker for a private home network. One 
 - **Installments:** enter total price, current installment (2/5) and statement date. The current and earlier installments are booked into their months; later installments are forecast. 1/1 is booked only in its selected month.
 - **Custom categories:** add, rename and delete categories. Categories used in historical transactions are protected from deletion.
 - **Debts and receivables:** optional initial account movement; partial payments and collections update the linked account and remaining balance. Debt principal movements do not inflate normal income/expense totals.
-- **Savings goals:** link each goal to one account in the same currency/asset. Progress is calculated from that account balance, without creating a duplicate asset.
-- **Reports:** monthly income/expense bars, expense categories and daily net-worth history.
+- **Savings goals:** track one account in its own currency/asset, or choose **Total assets (TRY)** to track the whole portfolio's net worth. Total-asset progress uses the same valuation as the dashboard, including current FX/gold quotes and debt/credit-card liabilities.
+- **Reports:** 12-month income/expense comparison, monthly net cashflow, daily income/expense activity, category changes vs. previous month, savings rate and daily average expense, plus daily net-worth history.
 - **Dark theme:** remembers the selected theme in the browser.
 - **Individual editing:** change the date, amount, account, category and description of one future salary/payment/installment without changing the recurring template. Past generated transactions can be edited like other transactions.
 - **Date format:** all full date fields use Turkish day-month-year format (GG.AA.YYYY).
@@ -38,6 +38,12 @@ Edit .env and set BUDGET_PASSWORD to a long password when the LAN is shared. The
 ~~~bash
 docker compose up -d --build
 ~~~
+
+## Version 0.4.0 additions
+
+- Goal amounts accept fractional values without browser step mismatch; successful saves no longer report an error due to resetting a form after the request.
+- Goals can follow one account or the full TRY-denominated net portfolio value.
+- Reports include 12-month comparisons, monthly net cashflow, daily activity, category comparisons, savings rate and average daily expense.
 
 ## Update without losing records
 
