@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f5f6f4">
+  <title>Budget</title>
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#dashboard" aria-label="Budget ana sayfa"><span class="brand-mark">B</span><span><strong>budget</strong><small>kişisel finans</small></span></a>
+      <div class="nav-label">GENEL</div>
+      <nav class="nav">
+        <button class="nav-item active" data-page="dashboard"><span class="nav-icon">⌂</span> Genel bakış</button>
+        <button class="nav-item" data-page="transactions"><span class="nav-icon">↕</span> İşlemler</button>
+        <button class="nav-item" data-page="accounts"><span class="nav-icon">▤</span> Hesaplar</button>
+        <button class="nav-item" data-page="plans"><span class="nav-icon">◷</span> Tekrarlananlar</button>
+        <button class="nav-item" data-page="debts"><span class="nav-icon">⇄</span> Borç / alacak</button>
+        <button class="nav-item" data-page="goals"><span class="nav-icon">◎</span> Hedefler</button>
+        <button class="nav-item" data-page="reports"><span class="nav-icon">▥</span> Raporlar</button>
+        <button class="nav-item" data-page="categories"><span class="nav-icon">☷</span> Kategoriler</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="local-card"><span class="pulse"></span><div><strong>Yerel kurulum</strong><small>Verilerin bu sunucuda</small></div></div>
+        <button class="text-button" id="backup-btn">↓ Veritabanı yedeği al</button>
+        <div class="version">BUDGET · 0.2.0</div>
+      </div>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <div class="mobile-brand"><span class="brand-mark">B</span><strong>budget</strong></div>
+        <div class="breadcrumbs"><span>Finans</span><span class="crumb-divider">/</span><strong id="page-name">Genel bakış</strong></div>
+        <div class="topbar-actions"><label class="month-picker"><span>Ay</span><input type="month" id="global-month"></label><button class="icon-button" id="refresh-btn" title="Kurları güncelle" aria-label="Kurları güncelle">↻</button></div>
+      </header>
+      <section class="page active" id="page-dashboard">
+        <div class="page-heading"><div><p class="eyebrow" id="today-label">KİŞİSEL FİNANS</p><h1>Genel bakış</h1><p class="muted">Paranın nerede olduğunu ve bu ay nereye gittiğini gör.</p></div><button class="button primary" data-go="transactions">＋ İşlem ekle</button></div>
+        <div class="summary-grid">
+          <article class="summary-card net-worth-card"><div class="card-top"><span>Net varlık</span><span class="card-icon">◇</span></div><div class="big-number" id="total-net-worth">₺0,00</div><div class="card-foot" id="net-worth-note">Hesaplarının güncel toplam değeri</div></article>
+          <article class="summary-card"><div class="card-top"><span>Bu ay gelir</span><span class="card-icon green">↗</span></div><div class="metric-number positive" id="month-income">₺0,00</div><div class="card-foot">Gerçekleşen gelir</div></article>
+          <article class="summary-card"><div class="card-top"><span>Bu ay gider</span><span class="card-icon red">↘</span></div><div class="metric-number negative" id="month-expense">₺0,00</div><div class="card-foot">Gerçekleşen gider</div></article>
+          <article class="summary-card"><div class="card-top"><span>Ay sonu tahmini</span><span class="card-icon blue">◎</span></div><div class="metric-number" id="forecast-net">₺0,00</div><div class="card-foot">Planlanan işlemler dahil</div></article>
+        </div>
+        <div class="dashboard-grid">
+          <article class="panel cashflow-panel"><div class="panel-heading"><div><h2>Aylık nakit akışı</h2><p class="muted">Seçili ayın gerçekleşen gelir ve giderleri</p></div><span class="legend"><i class="legend-income"></i> Gelir <i class="legend-expense"></i> Gider</span></div><div class="cashflow-bars" id="cashflow-bars"><div class="empty-state">Henüz işlem yok.</div></div></article>
+          <article class="panel upcoming-panel"><div class="panel-heading"><div><h2>Yaklaşan işlemler</h2><p class="muted">Maaşlar ve taksitler</p></div><button class="small-link" data-page-link="plans">Tümünü gör →</button></div><div id="upcoming-list" class="stack-list"><div class="empty-state">Henüz planlanmış işlem yok.</div></div></article>
+          <article class="panel accounts-panel"><div class="panel-heading"><div><h2>Hesaplar</h2><p class="muted">Güncel bakiyeler</p></div><button class="small-link" data-page-link="accounts">Hesapları yönet →</button></div><div id="dashboard-accounts" class="account-list"><div class="empty-state">Henüz hesap eklemedin.</div></div></article>
+          <article class="panel recent-panel"><div class="panel-heading"><div><h2>Son işlemler</h2><p class="muted">En son eklenen kayıtlar</p></div><button class="small-link" data-page-link="transactions">Tüm işlemler →</button></div><div id="recent-list" class="transaction-list"><div class="empty-state">Henüz işlem yok.</div></div></article>
+        </div>
+        <article class="panel history-panel"><div class="panel-heading"><div><h2>Net varlık geçmişi</h2><p class="muted">Uygulamayı kullandığın günlerde kaydedilen portföy değeri</p></div><button class="small-link" data-page-link="reports">Raporlar →</button></div><div id="dashboard-networth-chart" class="chart-area"><div class="empty-state">Henüz geçmiş veri yok. Günlük kayıtlar burada birikecek.</div></div></article>
+        <div class="rate-footer" id="rate-status">Kur bilgisi yükleniyor…</div>
+      </section>
+      <section class="page" id="page-transactions">
+        <div class="page-heading"><div><p class="eyebrow">HAREKETLER</p><h1>İşlemler</h1><p class="muted">Gelir, gider ve hesaplar arası transferlerini kaydet.</p></div></div>
+        <div class="content-grid">
+          <article class="panel form-panel"><div class="panel-heading"><div><h2>Yeni işlem</h2><p class="muted">Kaydettiğinde bakiyeler anında güncellenir.</p></div></div>
+            <form id="entry-form" class="form-grid">
+              <div class="field full"><label>İşlem türü</label><div class="segmented" id="entry-type-switch"><button type="button" class="selected" data-type="expense">Gider</button><button type="button" data-type="income">Gelir</button><button type="button" data-type="transfer">Transfer</button></div><input type="hidden" name="entry_type" value="expense"></div>
+              <div class="field"><label for="entry-date">Tarih</label><input required type="date" id="entry-date" name="entry_date"></div>
+              <div class="field"><label for="entry-account">Hesap</label><select required id="entry-account" name="account_id"></select></div>
+              <div class="field" id="entry-amount-field"><label for="entry-amount">Tutar</label><input required type="number" min="0.01" step="0.01" id="entry-amount" name="amount" placeholder="0,00"></div>
+              <div class="field hidden" id="entry-target-field"><label for="entry-target-account">Hedef hesap</label><select id="entry-target-account" name="target_account_id"></select></div>
+              <div class="field hidden" id="entry-target-amount-field"><label for="entry-target-amount">Hedef hesaba geçen miktar</label><input type="number" min="0.000001" step="0.000001" id="entry-target-amount" name="target_amount" placeholder="Otomatik / manuel"></div>
+              <div class="field" id="entry-category-field"><label for="entry-category">Kategori</label><input id="entry-category" name="category" list="category-options" placeholder="Örn. Market"><datalist id="category-options"></datalist></div>
+              <div class="field full"><label for="entry-description">Açıklama</label><input id="entry-description" name="description" maxlength="160" placeholder="Örn. Haftalık market alışverişi"></div>
+              <div class="form-actions full"><button class="button primary" type="submit">İşlemi kaydet</button></div>
+            </form>
+          </article>
+          <article class="panel table-panel"><div class="panel-heading"><div><h2>İşlem geçmişi</h2><p class="muted">Seçili ayın kayıtları</p></div><span class="count-pill" id="entry-count">0 kayıt</span></div><div id="all-entries" class="transaction-list"><div class="empty-state">Henüz işlem yok.</div></div></article>
+        </div>
+        <article class="panel trade-panel"><div class="panel-heading"><div><h2>Döviz / altın alım-satımı</h2><p class="muted">Gerçekleşen tutarı sen gir. Piyasa kuru yalnızca portföy değerlemesinde kullanılır.</p></div></div>
+          <form id="trade-form" class="form-grid">
+            <div class="field full"><label>İşlem yönü</label><div class="segmented" id="trade-type-switch"><button type="button" class="selected" data-trade-type="buy">Varlık al</button><button type="button" data-trade-type="sell">Varlık sat</button></div><input type="hidden" id="trade-type" name="trade_type" value="buy"></div>
+            <div class="field"><label for="trade-date">İşlem tarihi</label><input type="date" required id="trade-date" name="trade_date"></div>
+            <div class="field"><label id="trade-asset-account-label" for="trade-asset-account">Alınan varlığın hesabı</label><select required id="trade-asset-account" name="asset_account_id"></select></div>
+            <div class="field"><label id="trade-cash-account-label" for="trade-cash-account">Ödeme hesabı</label><select required id="trade-cash-account" name="cash_account_id"></select></div>
+            <div class="field"><label id="trade-asset-quantity-label" for="trade-asset-quantity">Alınan miktar</label><input type="number" required min="0.000001" step="0.000001" id="trade-asset-quantity" name="asset_quantity"></div>
+            <div class="field"><label id="trade-cash-amount-label" for="trade-cash-amount">Hesaptan çıkan gerçek tutar</label><input type="number" required min="0.01" step="0.01" id="trade-cash-amount" name="cash_amount"></div>
+            <div class="field full"><label for="trade-description">Açıklama</label><input id="trade-description" name="description" maxlength="160" placeholder="Örn. Bankadan gram altın alımı; makas dahil net maliyet"></div>
+            <div class="hint full" id="trade-hint">Alımda ödeme hesabından girdiğin tutar düşer, varlık hesabına girdiğin miktar eklenir. Vergi ve makas dahil gerçek maliyeti sen belirlersin.</div>
+            <div class="form-actions full"><button class="button primary" type="submit">Alım işlemini kaydet</button></div>
+          </form>
+        </article>
+      </section>
+      <section class="page" id="page-accounts">
+        <div class="page-heading"><div><p class="eyebrow">VARLIKLAR</p><h1>Hesaplar</h1><p class="muted">TL, döviz ve altın hesaplarını tek yerde takip et.</p></div></div>
+        <div class="content-grid">
+          <article class="panel form-panel"><div class="panel-heading"><div><h2>Hesap ekle</h2><p class="muted">Başlangıç bakiyeni girebilirsin.</p></div></div>
+            <form id="account-form" class="form-grid">
+              <div class="field full"><label for="account-name">Hesap adı</label><input required id="account-name" name="name" maxlength="80" placeholder="Örn. Ana banka hesabım"></div>
+              <div class="field"><label for="account-kind">Hesap türü</label><select id="account-kind" name="kind"><option value="bank">Banka</option><option value="cash">Nakit</option><option value="credit_card">Kredi kartı</option><option value="investment">Yatırım</option></select></div>
+              <div class="field"><label for="account-asset">Para / varlık</label><select id="account-asset" name="asset_code"></select></div>
+              <div class="field full"><label for="account-opening">Başlangıç bakiyesi / miktarı</label><input type="number" step="0.000001" id="account-opening" name="opening_balance" value="0"></div>
+              <div class="field full"><label for="account-note">Not (isteğe bağlı)</label><input id="account-note" name="note" maxlength="250" placeholder=""></div>
+              <div class="form-actions full"><button class="button primary" type="submit">Hesap oluştur</button></div>
+            </form>
+          </article>
+          <article class="panel table-panel"><div class="panel-heading"><div><h2>Tüm hesaplar</h2><p class="muted">Bakiye ve TL karşılığı</p></div></div><div id="all-accounts" class="account-list"><div class="empty-state">Henüz hesap eklemedin.</div></div></article>
+        </div>
+      </section>
+      <section class="page" id="page-plans">
+        <div class="page-heading"><div><p class="eyebrow">GELECEK PLANLAMASI</p><h1>Tekrarlanan işlemler</h1><p class="muted">Maaşını, düzenli ödemelerini ve taksitlerini bir kez tanımla.</p></div></div>
+        <div class="content-grid plans-grid">
+          <article class="panel form-panel"><div class="panel-heading"><div><h2>Düzenli işlem ekle</h2><p class="muted">Maaş, kira, abonelik veya faturalar.</p></div></div>
+            <form id="schedule-form" class="form-grid">
+              <div class="field full"><label for="schedule-name">İşlem adı</label><input required id="schedule-name" name="name" placeholder="Örn. Maaş" maxlength="100"></div>
+              <div class="field"><label for="schedule-type">Tür</label><select id="schedule-type" name="entry_type"><option value="income">Gelir</option><option value="expense">Gider</option></select></div>
+              <div class="field"><label for="schedule-amount">Tutar</label><input required type="number" min="0.01" step="0.01" name="amount" id="schedule-amount"></div>
+              <div class="field"><label for="schedule-account">Hesap</label><select required id="schedule-account" name="account_id"></select></div>
+              <div class="field"><label for="schedule-frequency">Tekrar</label><select id="schedule-frequency" name="frequency"><option value="monthly">Her ay</option><option value="weekly">Her hafta</option><option value="yearly">Her yıl</option></select></div>
+              <div class="field"><label for="schedule-start">İlk tarih</label><input required type="date" id="schedule-start" name="start_date"></div>
+              <div class="field" id="schedule-day-field"><label for="schedule-day">Ayın kaçında?</label><input type="number" min="1" max="31" value="1" id="schedule-day" name="day_of_month"></div>
+              <div class="field"><label for="schedule-end">Bitiş (isteğe bağlı)</label><input type="date" id="schedule-end" name="end_date"></div>
+              <div class="field"><label for="schedule-category">Kategori</label><input id="schedule-category" name="category" placeholder="Örn. Maaş"></div>
+              <div class="form-actions full"><button class="button primary" type="submit">Tekrarlanan işlem oluştur</button></div>
+            </form>
+          </article>
+          <article class="panel form-panel"><div class="panel-heading"><div><h2>Taksitli harcama ekle</h2><p class="muted">Örn. 2/5 girersen ilk taksit önceki aya eklenir.</p></div></div>
+            <form id="installment-form" class="form-grid">
+              <div class="field full"><label for="installment-name">Ürün / harcama adı</label><input required id="installment-name" name="name" placeholder="Örn. Telefon" maxlength="100"></div>
+              <div class="field"><label for="installment-total">Toplam fiyat (TL)</label><input required type="number" min="0.01" step="0.01" id="installment-total" name="total_amount"></div>
+              <div class="field"><label for="installment-account">Kredi kartı / hesap</label><select required id="installment-account" name="account_id"></select></div>
+              <div class="field"><label for="installment-no">Mevcut taksit</label><input required type="number" min="1" max="120" value="1" id="installment-no" name="current_installment"></div>
+              <div class="field"><label for="installment-count">Toplam taksit</label><input required type="number" min="1" max="120" value="1" id="installment-count" name="total_installments"></div>
+              <div class="field"><label for="installment-date">Ekstre / mevcut taksit tarihi</label><input required type="date" id="installment-date" name="statement_date"></div>
+              <div class="field"><label for="installment-category">Kategori</label><input id="installment-category" name="category" value="Alışveriş"></div>
+              <div class="form-actions full"><button class="button primary" type="submit">Taksit planı oluştur</button></div>
+              <p class="hint full">Önceki taksitler geçmiş harcama olarak kaydedilir. Mevcut ve sonraki taksitler yaklaşan işlemlerde görünür; ödendiğinde tamamlandı olarak işaretleyebilirsin.</p>
+            </form>
+          </article>
+          <article class="panel table-panel"><div class="panel-heading"><div><h2>Düzenli işlemler</h2><p class="muted">Gelecek tahminlerine dahil edilir.</p></div></div><div id="schedule-list" class="stack-list"><div class="empty-state">Henüz düzenli işlem yok.</div></div></article>
+          <article class="panel table-panel"><div class="panel-heading"><div><h2>Taksit planları</h2><p class="muted">Kalan ödemelerin takibi.</p></div></div><div id="installment-list" class="stack-list"><div class="empty-state">Henüz taksit yok.</div></div></article>
+        </div>
+      </section>
+      <section class="page" id="page-debts">
+        <div class="page-heading"><div><p class="eyebrow">TAKİP</p><h1>Borç / alacak</h1><p class="muted">Sana olan borçları ve senin borçlarını takip et; kısmi ödemeleri kaydet.</p></div></div>
+        <div class="content-grid plans-grid">
+          <article class="panel form-panel"><div class="panel-heading"><div><h2>Yeni borç / alacak</h2><p class="muted">İlk hareketi hesaba da uygulayabilir veya mevcut bir borcu sadece takip edebilirsin.</p></div></div>
+            <form id="debt-form" class="form-grid">
+              <div class="field full"><label for="debt-name">Açıklama</label><input required id="debt-name" name="name" placeholder="Örn. Kişisel borç"></div>
+              <div class="field"><label for="debt-counterparty">Kişi / kurum</label><input id="debt-counterparty" name="counterparty" placeholder="İsteğe bağlı"></div>
+              <div class="field"><label for="debt-direction">Yön</label><select id="debt-direction" name="direction"><option value="payable">Ben borçluyum</option><option value="receivable">Bana borçlular</option></select></div>
+              <div class="field"><label for="debt-asset">Para / varlık</label><select id="debt-asset" name="asset_code"></select></div>
+              <div class="field"><label for="debt-amount">Toplam tutar</label><input required type="number" min="0.000001" step="0.01" id="debt-amount" name="amount"></div>
+              <div class="field full"><label for="debt-opening-account">İlk para hareketi (isteğe bağlı)</label><select id="debt-opening-account" name="account_id"><option value="">Sadece borç/alacak kaydı oluştur</option></select></div>
+              <div class="field"><label for="debt-due">Vade (isteğe bağlı)</label><input type="date" id="debt-due" name="due_date"></div>
+              <div class="field"><label for="debt-note">Not</label><input id="debt-note" name="note"></div>
+              <div class="form-actions full"><button class="button primary" type="submit">Kaydet</button></div>
+            </form>
+          </article>
+          <article class="panel form-panel"><div class="panel-heading"><div><h2>Ödeme / tahsilat kaydet</h2><p class="muted">İşlem seçilen banka veya nakit hesabına da işlenir.</p></div></div>
+            <form id="debt-payment-form" class="form-grid">
+              <div class="field full"><label for="debt-payment-id">Borç / alacak</label><select required id="debt-payment-id" name="debt_id"></select></div>
+              <div class="field"><label for="debt-payment-account">Hesap</label><select required id="debt-payment-account" name="account_id"></select></div>
+              <div class="field"><label for="debt-payment-amount">Ödenen / tahsil edilen</label><input required type="number" min="0.000001" step="0.01" id="debt-payment-amount" name="amount"></div>
+              <div class="field"><label for="debt-payment-date">Tarih</label><input required type="date" id="debt-payment-date" name="payment_date"></div>
+              <div class="form-actions full"><button class="button primary" type="submit">Ödemeyi kaydet</button></div>
+            </form>
+          </article>
+          <article class="panel table-panel full-span"><div class="panel-heading"><div><h2>Açık kayıtlar</h2><p class="muted">Kalan borç ve alacaklar</p></div></div><div id="debt-list" class="stack-list"><div class="empty-state">Henüz kayıt yok.</div></div></article>
+        </div>
+      </section>
+      <section class="page" id="page-goals">
+        <div class="page-heading"><div><p class="eyebrow">BİRİKİM</p><h1>Hedefler</h1><p class="muted">Hedefini bir hesaba bağla; hesabın bakiyesi ilerleme olarak gösterilsin.</p></div></div>
+        <div class="content-grid">
+          <article class="panel form-panel"><div class="panel-heading"><div><h2>Yeni birikim hedefi</h2><p class="muted">İlerleme, bağladığın hesabın mevcut bakiyesinden hesaplanır.</p></div></div>
+            <form id="goal-form" class="form-grid">
+              <div class="field full"><label for="goal-name">Hedef adı</label><input required id="goal-name" name="name" placeholder="Örn. Acil durum fonu"></div>
+              <div class="field"><label for="goal-asset">Hedef birimi</label><select id="goal-asset" name="asset_code"></select></div>
+              <div class="field"><label for="goal-target">Hedef tutar / miktar</label><input required type="number" min="0.000001" step="0.01" id="goal-target" name="target_amount"></div>
+              <div class="field full"><label for="goal-account">Takip edilecek hesap (aynı birimde)</label><select id="goal-account" name="account_id"><option value="">Hesap bağlama</option></select></div>
+              <div class="field"><label for="goal-date">Hedef tarihi</label><input type="date" id="goal-date" name="target_date"></div>
+              <div class="field"><label for="goal-note">Not</label><input id="goal-note" name="note"></div>
+              <div class="form-actions full"><button class="button primary" type="submit">Hedef oluştur</button></div>
+            </form>
+          </article>
+          <article class="panel table-panel"><div class="panel-heading"><div><h2>Hedeflerim</h2><p class="muted">Mevcut ilerleme ve kalan miktar</p></div></div><div id="goal-list" class="stack-list"><div class="empty-state">Henüz hedef yok.</div></div></article>
+        </div>
+      </section>
+      <section class="page" id="page-reports">
+        <div class="page-heading"><div><p class="eyebrow">ANALİZ</p><h1>Raporlar</h1><p class="muted">Aylık nakit akışı, harcama dağılımı ve servet geçmişi.</p></div></div>
+        <div class="reports-grid">
+          <article class="panel"><div class="panel-heading"><div><h2>Son 12 ay</h2><p class="muted">Gelir ve gider · TL karşılığı</p></div></div><div id="monthly-chart" class="monthly-chart"><div class="empty-state">Yükleniyor…</div></div></article>
+          <article class="panel"><div class="panel-heading"><div><h2>Harcama kategorileri</h2><p class="muted">Seçili ayın gider dağılımı</p></div></div><div id="category-chart" class="category-chart"><div class="empty-state">Yükleniyor…</div></div></article>
+          <article class="panel wide-panel"><div class="panel-heading"><div><h2>Net varlık geçmişi</h2><p class="muted">Günlük kaydedilmiş portföy değeri</p></div></div><div id="reports-networth-chart" class="chart-area"><div class="empty-state">Henüz geçmiş veri yok.</div></div><p class="hint">Net varlık geçmişi her gün uygulamayı açtığında kaydedilir. Geçmiş noktalar, o günün fiyatlarını korur.</p></article>
+        </div>
+        <p class="rate-footer" id="analytics-note"></p>
+      </section>
+      <section class="page" id="page-categories">
+        <div class="page-heading"><div><p class="eyebrow">DÜZENLEME</p><h1>Kategoriler</h1><p class="muted">Gelir ve gider kategorilerini kendine göre düzenle.</p></div></div>
+        <div class="content-grid">
+          <article class="panel form-panel"><div class="panel-heading"><div><h2>Kategori ekle</h2></div></div>
+            <form id="category-form" class="form-grid">
+              <div class="field full"><label for="category-name">Kategori adı</label><input required id="category-name" name="name" maxlength="60" placeholder="Örn. Evcil hayvan"></div>
+              <div class="field full"><label for="category-kind">Kullanım</label><select id="category-kind" name="kind"><option value="expense">Gider</option><option value="income">Gelir</option><option value="both">Her ikisi</option></select></div>
+              <div class="form-actions full"><button class="button primary" type="submit">Kategori ekle</button></div>
+            </form>
+          </article>
+          <article class="panel table-panel"><div class="panel-heading"><div><h2>Kayıtlı kategoriler</h2><p class="muted">Geçmiş işlemlerde kullanılan kategoriler silinemez.</p></div></div><div id="category-list" class="stack-list"><div class="empty-state">Yükleniyor…</div></div></article>
+        </div>
+      </section>
+      <footer class="app-footer">Budget · Kişisel finans verilerin kendi sunucunda saklanır.</footer>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/app.js" defer></script>
+</body>
+</html>
