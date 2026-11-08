@@ -342,6 +342,13 @@ def value_in_try(asset_code: str, amount: float, quotes: dict[str, dict]) -> tup
     return amount * float(q["bid"]), bool(q["is_stale"])
 
 
+def amount_to_try(asset_code: str, amount: float, quotes: dict[str, dict]) -> float:
+    if asset_code == "TRY":
+        return float(amount)
+    quote = quotes.get(asset_code)
+    return float(amount) * float(quote["bid"]) if quote else 0.0
+
+
 def add_entry(db: sqlite3.Connection, *, entry_date: date, entry_type: str, account_id: int,
               amount: float, target_account_id: int | None = None, target_amount: float | None = None,
               category: str = "", description: str = "", source_type: str = "manual",
