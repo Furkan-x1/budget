@@ -5,3 +5,112 @@
 @media(max-width:1150px){.reports-grid{grid-template-columns:1fr 1fr}.wide-panel{grid-column:1/-1}}
 @media(max-width:850px){.reports-grid{grid-template-columns:1fr}.wide-panel{grid-column:auto}.full-span{grid-column:auto}}
 @media(max-width:620px){.monthly-chart{gap:3px}.month-column small{font-size:7px}.month-bars{height:160px}.chart-caption{font-size:8px}.trade-panel{margin-top:12px}}
+
+
+/* Consistent Turkish date fields and edit dialog */
+.date-input,[data-date-input]{font-variant-numeric:tabular-nums;letter-spacing:.35px}
+.date-input::placeholder,[data-date-input]::placeholder{color:#aeb8af}
+.edit-dialog{width:min(520px,calc(100vw - 28px));max-width:520px;max-height:calc(100vh - 32px);overflow:auto;border:1px solid var(--line);border-radius:16px;padding:0;background:var(--panel);color:var(--ink);box-shadow:0 24px 80px #101a132e}
+.edit-dialog::backdrop{background:rgba(15,24,18,.48);backdrop-filter:blur(3px)}
+.edit-form{padding:22px}
+.dialog-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:20px}
+.dialog-heading h2{font-size:18px;letter-spacing:-.4px;margin:0}
+.dialog-heading .eyebrow{margin-bottom:5px}
+.dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+.button.secondary{background:var(--panel-soft);border-color:var(--line);color:var(--muted)}
+.button.secondary:hover{border-color:var(--muted);color:var(--ink)}
+@media(max-width:620px){.edit-form{padding:16px}.edit-dialog{max-height:calc(100vh - 20px)}}
+
+/* User-selectable dark theme */
+html[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#111713;
+  --panel:#1a241e;
+  --panel-soft:#202c24;
+  --ink:#e3ece5;
+  --muted:#9aa99d;
+  --line:#2c3a30;
+  --accent:#83b497;
+  --accent-dark:#9ac6a9;
+  --accent-soft:#263d2e;
+  --green:#83c29a;
+  --green-soft:#23382a;
+  --red:#df8f83;
+  --red-soft:#422a28;
+  --blue:#8baec5;
+  --blue-soft:#263945;
+  --shadow:0 5px 22px rgba(0,0,0,.13);
+}
+html[data-theme="dark"] body{background:var(--bg);color:var(--ink)}
+html[data-theme="dark"] .sidebar{background:#172019;border-color:var(--line)}
+html[data-theme="dark"] .brand{color:var(--ink)}
+html[data-theme="dark"] .nav-item{color:#aab7ac}
+html[data-theme="dark"] .nav-item:hover{background:#202c24;color:var(--ink)}
+html[data-theme="dark"] .nav-item.active{background:#294332;color:#a9d2b5}
+html[data-theme="dark"] .local-card{background:#202c24}
+html[data-theme="dark"] .local-card strong{color:var(--ink)}
+html[data-theme="dark"] .main{color:var(--ink)}
+html[data-theme="dark"] .topbar{border-color:var(--line)}
+html[data-theme="dark"] .breadcrumbs strong{color:var(--ink)}
+html[data-theme="dark"] .month-picker input,
+html[data-theme="dark"] .icon-button{background:#202c24;border-color:var(--line);color:var(--ink)}
+html[data-theme="dark"] .summary-card{background:var(--panel);border-color:var(--line)}
+html[data-theme="dark"] .net-worth-card{background:#1e3024;border-color:#304b37}
+html[data-theme="dark"] .big-number{color:#b1d7ba}
+html[data-theme="dark"] .card-top,
+html[data-theme="dark"] .card-foot{color:#9cac9f}
+html[data-theme="dark"] .card-icon{background:#2a372d;color:#bdcabe}
+html[data-theme="dark"] .card-icon.green{background:var(--green-soft);color:var(--green)}
+html[data-theme="dark"] .card-icon.red{background:var(--red-soft);color:var(--red)}
+html[data-theme="dark"] .card-icon.blue{background:var(--blue-soft);color:var(--blue)}
+html[data-theme="dark"] .panel{background:var(--panel);border-color:var(--line)}
+html[data-theme="dark"] .panel-heading h2,
+html[data-theme="dark"] .row-title,
+html[data-theme="dark"] .account-value strong,
+html[data-theme="dark"] .schedule-title{color:var(--ink)}
+html[data-theme="dark"] .row-list,
+html[data-theme="dark"] .list-row,
+html[data-theme="dark"] .schedule-item,
+html[data-theme="dark"] .goal-item{border-color:#2a372d}
+html[data-theme="dark"] .row-symbol{background:#28362c;color:#b6c9b9}
+html[data-theme="dark"] .row-sub,
+html[data-theme="dark"] .schedule-sub,
+html[data-theme="dark"] .schedule-state,
+html[data-theme="dark"] .account-value small{color:#91a095}
+html[data-theme="dark"] .tiny-button{background:#202d24;border-color:#35473a;color:#a7c8b1}
+html[data-theme="dark"] .tiny-button:hover{background:#293c2f}
+html[data-theme="dark"] .tiny-button.danger{color:#e49a90;background:#362725;border-color:#553633}
+html[data-theme="dark"] .field label{color:#a1b0a4}
+html[data-theme="dark"] .field input,
+html[data-theme="dark"] .field select,
+html[data-theme="dark"] .month-picker input{background:#131c16;border-color:#354439;color:var(--ink)}
+html[data-theme="dark"] .field input::placeholder{color:#718076}
+html[data-theme="dark"] .field input:focus,
+html[data-theme="dark"] .field select:focus{border-color:#77a889;box-shadow:0 0 0 3px #294632}
+html[data-theme="dark"] .segmented{background:#131c16;border-color:#303d33}
+html[data-theme="dark"] .segmented button{color:#9aa99d}
+html[data-theme="dark"] .segmented button.selected{background:#2a3b2f;color:#c1ddc8;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+html[data-theme="dark"] .hint{background:#202b23;color:#9eafa2}
+html[data-theme="dark"] .count-pill{background:#29372d;color:#aab9ad}
+html[data-theme="dark"] .empty-state,
+html[data-theme="dark"] .rate-footer,
+html[data-theme="dark"] .app-footer{color:#829187}
+html[data-theme="dark"] .progress-track{background:#2a382e}
+html[data-theme="dark"] .chart-axis{stroke:#344438}
+html[data-theme="dark"] .chart-area-fill{fill:#2a4031}
+html[data-theme="dark"] .chart-line{stroke:#8db89a}
+html[data-theme="dark"] .chart-dot{fill:#9bc5a6}
+html[data-theme="dark"] .chart-caption strong{color:#b4d8bd}
+html[data-theme="dark"] .month-bars{border-color:#344438}
+html[data-theme="dark"] .bar.income,
+html[data-theme="dark"] .month-bar.income{background:#6fa982}
+html[data-theme="dark"] .bar.expense,
+html[data-theme="dark"] .month-bar.expense{background:#bd786e}
+html[data-theme="dark"] .category-fill{background:#69977a}
+html[data-theme="dark"] .edit-dialog{background:var(--panel);border-color:var(--line);color:var(--ink)}
+html[data-theme="dark"] .button.secondary{background:#26332a;border-color:#3a4b3e;color:#b2c0b5}
+html[data-theme="dark"] .toast{background:#d9e8dd;color:#18231b}
+html[data-theme="dark"] .app-footer{color:#718176}
+html[data-theme="dark"] .brand-mark{background:#4f8161}
+html[data-theme="dark"] .legend-income{background:#6fa982}
+html[data-theme="dark"] .legend-expense{background:#bd786e}
