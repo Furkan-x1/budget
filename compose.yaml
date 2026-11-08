@@ -1,0 +1,27 @@
+services:
+  budget:
+    build: .
+    container_name: budget
+    restart: unless-stopped
+    ports:
+      - "8088:8080"
+    environment:
+      DATA_DIR: /data
+      TZ: Europe/Istanbul
+      RATES_REFRESH_MINUTES: 15
+      APP_PASSWORD: ${BUDGET_PASSWORD:-}
+    volumes:
+      - budget_data:/data
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import os,base64,urllib.request; p=os.getenv('APP_PASSWORD',''); h={'Authorization':'Basic '+base64.b64encode(('budget:'+p).encode()).decode()} if p else {}; urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:8080/api/status',headers=h),timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  budget_data:
