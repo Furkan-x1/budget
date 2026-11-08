@@ -240,8 +240,11 @@ def create_installment(data: InstallmentIn):
         plan_id = int(cur.lastrowid)
         first_date = add_months(data.statement_date, -(data.current_installment - 1))
         per = round(data.total_amount / data.total_installments, 2)
-        for no in range(1, data.current_installment + 1):
+        historical_installments_added = 0
+        for no in range(1, data.current_installment):
             due = add_months(first_date, no - 1)
+            if due >= date.today():
+                continue
             amount = round(data.total_amount - per * (no - 1), 2) if no == data.total_installments else per
             entry_id = add_entry(db, entry_date=due, entry_type="expense", account_id=data.account_id,
                 amount=amount, category=data.category.strip(),
@@ -251,15 +254,22 @@ def create_installment(data: InstallmentIn):
                 "INSERT INTO completed_occurrences(source_type,source_id,occurrence_key,entry_id,completed_at) VALUES('installment',?,?,?,?)",
                 (plan_id, str(no), entry_id, now_iso()),
             )
-    return {"id": plan_id, "historical_installments_added": data.current_installment - 1}
+            historical_installments_added += 1
+    return {
+        "id": plan_id,
+        "historical_installments_added": historical_installments_added,
+        "planned_installments": data.total_installments - historical_installments_added,
+    }
 
 
 @app.get("/api/installments")
 def list_installments():
     with db_conn() as db:
         rows = db.execute(
-            """SELECT p.*,a.name AS account_name FROM installment_plans p
-               JOIN accounts a ON a.id=p.account_id ORDER BY p.id DESC"""
+            """SELECT p.*,a.name AS account_name,
+                      (SELECT COUNT(*) FROM completed_occurrences c
+                       WHERE c.source_type='installment' AND c.source_id=p.id) AS completed_installments
+               FROM installment_plans p JOIN accounts a ON a.id=p.account_id ORDER BY p.id DESC"""
         ).fetchall()
     return [dict(r) for r in rows]
 
@@ -274,7 +284,7 @@ def complete_installment(plan_id: int, data: OccurrenceCompleteIn):
         plan = db.execute("SELECT * FROM installment_plans WHERE id=?", (plan_id,)).fetchone()
         if plan is None:
             raise HTTPException(404, "Taksit planı bulunamadı")
-        if no <= int(plan["current_installment"]) or no > int(plan["total_installments"]):
+        if no < 1 or no > int(plan["total_installments"]):
             raise HTTPException(400, "Taksit numarası planın kapsamı dışında")
         if occurrence_done(db, "installment", plan_id, str(no)):
             raise HTTPException(409, "Bu taksit zaten işaretlenmiş")
