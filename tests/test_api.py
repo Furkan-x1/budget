@@ -183,6 +183,61 @@ class BudgetApiSmokeTest(unittest.TestCase):
         })
         self.assertEqual(laptop_entry.status_code, 200, laptop_entry.text)
 
+        # A future first installment must remain pending; completing it can be reversed.
+        future_statement = budget.add_months(budget.date.today().replace(day=1), 1)
+        future_month = future_statement.strftime("%Y-%m")
+        future_date = future_statement.isoformat()
+        future_plan = client.post("/api/installments", json={
+            "name": "Gelecek tarihli alışveriş", "total_amount": 3000, "account_id": bank,
+            "category": "Alışveriş", "total_installments": 3,
+            "current_installment": 1, "statement_date": future_date,
+        })
+        self.assertEqual(future_plan.status_code, 200, future_plan.text)
+        self.assertEqual(future_plan.json()["historical_installments_added"], 0)
+        self.assertEqual(future_plan.json()["planned_installments"], 3)
+        future_plan_id = future_plan.json()["id"]
+        future_items = client.get(
+            f"/api/occurrences?from_date={future_date}&to_date={(budget.add_months(future_statement, 1)-budget.timedelta(days=1)).isoformat()}"
+        ).json()
+        first_future = next(x for x in future_items
+                            if x["source_type"] == "installment" and x["source_id"] == future_plan_id
+                            and x["occurrence_key"] == "1")
+        self.assertEqual(first_future["status"], "pending")
+        self.assertEqual(first_future["due_date"], future_date)
+
+        balance_before_completion = next(a for a in client.get("/api/accounts").json() if a["id"] == bank)["balance"]
+        future_completed = client.post(f"/api/installments/{future_plan_id}/complete", json={
+            "occurrence_key": "1",
+        })
+        self.assertEqual(future_completed.status_code, 200, future_completed.text)
+        completed_items = client.get(
+            f"/api/occurrences?from_date={future_date}&to_date={future_date}"
+        ).json()
+        completed_future = next(x for x in completed_items if x["source_id"] == future_plan_id)
+        self.assertEqual(completed_future["status"], "completed")
+        balance_after_completion = next(a for a in client.get("/api/accounts").json() if a["id"] == bank)["balance"]
+        self.assertAlmostEqual(balance_before_completion - balance_after_completion, 1000)
+
+        reverted = client.post(
+            f"/api/occurrences/installment/{future_plan_id}/1/uncomplete",
+        )
+        self.assertEqual(reverted.status_code, 200, reverted.text)
+        pending_items = client.get(
+            f"/api/occurrences?from_date={future_date}&to_date={future_date}"
+        ).json()
+        pending_future = next(x for x in pending_items if x["source_id"] == future_plan_id)
+        self.assertEqual(pending_future["status"], "pending")
+        self.assertEqual(pending_future["due_date"], future_date)
+        self.assertEqual(pending_future["amount"], 1000)
+        balance_after_revert = next(a for a in client.get("/api/accounts").json() if a["id"] == bank)["balance"]
+        self.assertAlmostEqual(balance_after_revert, balance_before_completion)
+
+        # The same occurrence can be marked as completed again after reversing it.
+        completed_again = client.post(f"/api/installments/{future_plan_id}/complete", json={
+            "occurrence_key": "1",
+        })
+        self.assertEqual(completed_again.status_code, 200, completed_again.text)
+
 
 if __name__ == "__main__":
     unittest.main()
