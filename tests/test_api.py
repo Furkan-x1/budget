@@ -106,6 +106,66 @@ class BudgetApiSmokeTest(unittest.TestCase):
         self.assertEqual(dashboard.json()["income"], 0)
         self.assertEqual(dashboard.json()["expense"], 0)
 
+        # A one-month salary adjustment changes only that occurrence, not the template.
+        salary = client.post("/api/schedules", json={
+            "name": "Maaş", "entry_type": "income", "amount": 50000,
+            "account_id": bank, "category": "Maaş", "frequency": "monthly",
+            "day_of_month": 15, "start_date": "2026-11-15",
+        })
+        self.assertEqual(salary.status_code, 200, salary.text)
+        salary_id = salary.json()["id"]
+        changed_salary = client.patch(f"/api/occurrences/schedule/{salary_id}/2026-12-15", json={
+            "due_date": "2026-12-20", "amount": 42000,
+            "description": "Maaş (izin kesintisi)",
+        })
+        self.assertEqual(changed_salary.status_code, 200, changed_salary.text)
+        december = client.get("/api/forecast?month=2026-12").json()
+        salary_forecast = next(x for x in december if x["source_type"] == "schedule")
+        self.assertEqual(salary_forecast["amount"], 42000)
+        self.assertEqual(salary_forecast["due_date"], "2026-12-20")
+        # Other months still use the original recurring amount.
+        january = client.get("/api/forecast?month=2027-01").json()
+        january_salary = next(x for x in january if x["source_type"] == "schedule")
+        self.assertEqual(january_salary["amount"], 50000)
+        completed_salary = client.post(f"/api/schedules/{salary_id}/complete", json={
+            "occurrence_key": "2026-12-15",
+        })
+        self.assertEqual(completed_salary.status_code, 200, completed_salary.text)
+        salary_entry_id = completed_salary.json()["id"]
+        edited_past = client.patch(f"/api/entries/{salary_entry_id}", json={
+            "entry_date": "2026-12-21", "amount": 43000,
+        })
+        self.assertEqual(edited_past.status_code, 200, edited_past.text)
+        saved_salary = next(x for x in client.get("/api/entries?month=2026-12").json()
+                            if x["id"] == salary_entry_id)
+        self.assertEqual(saved_salary["entry_date"], "2026-12-21")
+        self.assertEqual(saved_salary["amount"], 43000)
+
+        # A single future installment can be adjusted without changing other installments.
+        installment = client.post("/api/installments", json={
+            "name": "Laptop", "total_amount": 8000, "account_id": bank,
+            "category": "Alışveriş", "total_installments": 4,
+            "current_installment": 2, "statement_date": "2026-11-08",
+        })
+        self.assertEqual(installment.status_code, 200, installment.text)
+        plan_id = installment.json()["id"]
+        changed_installment = client.patch(f"/api/occurrences/installment/{plan_id}/3", json={
+            "due_date": "2026-12-05", "amount": 1700, "description": "Laptop · özel taksit",
+        })
+        self.assertEqual(changed_installment.status_code, 200, changed_installment.text)
+        december = client.get("/api/forecast?month=2026-12").json()
+        laptop_forecast = next(x for x in december if x["source_type"] == "installment")
+        self.assertEqual(laptop_forecast["amount"], 1700)
+        self.assertEqual(laptop_forecast["due_date"], "2026-12-05")
+        completed_installment = client.post(f"/api/installments/{plan_id}/complete", json={
+            "occurrence_key": "3",
+        })
+        self.assertEqual(completed_installment.status_code, 200, completed_installment.text)
+        laptop_entry = client.patch(f"/api/entries/{completed_installment.json()['id']}", json={
+            "entry_date": "2026-12-06", "amount": 1750,
+        })
+        self.assertEqual(laptop_entry.status_code, 200, laptop_entry.text)
+
 
 if __name__ == "__main__":
     unittest.main()
