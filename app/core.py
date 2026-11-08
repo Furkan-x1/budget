@@ -108,6 +108,18 @@ def init_db() -> None:
             entry_id INTEGER NOT NULL REFERENCES entries(id) ON DELETE RESTRICT,
             completed_at TEXT NOT NULL, UNIQUE(source_type, source_id, occurrence_key)
         );
+        CREATE TABLE IF NOT EXISTS occurrence_overrides (
+            source_type TEXT NOT NULL CHECK(source_type IN ('schedule','installment')),
+            source_id INTEGER NOT NULL,
+            occurrence_key TEXT NOT NULL,
+            due_date TEXT,
+            amount REAL CHECK(amount IS NULL OR amount > 0),
+            account_id INTEGER REFERENCES accounts(id) ON DELETE RESTRICT,
+            category TEXT,
+            description TEXT,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY(source_type,source_id,occurrence_key)
+        );
         CREATE TABLE IF NOT EXISTS quotes (
             asset_code TEXT PRIMARY KEY, bid REAL NOT NULL, ask REAL NOT NULL,
             rate_date TEXT NOT NULL, updated_at TEXT NOT NULL,
@@ -391,6 +403,23 @@ def schedule_dates(schedule: sqlite3.Row, from_date: date, to_date: date) -> lis
     return dates
 
 
+def occurrence_override(db: sqlite3.Connection, source_type: str, source_id: int, key: str) -> dict:
+    row = db.execute(
+        """SELECT due_date,amount,account_id,category,description
+           FROM occurrence_overrides WHERE source_type=? AND source_id=? AND occurrence_key=?""",
+        (source_type, source_id, key),
+    ).fetchone()
+    return dict(row) if row else {}
+
+
+def apply_occurrence_override(db: sqlite3.Connection, item: dict) -> dict:
+    override = occurrence_override(db, item["source_type"], item["source_id"], item["occurrence_key"])
+    for field in ("due_date", "amount", "account_id", "category", "description"):
+        if override.get(field) is not None:
+            item[field] = override[field]
+    return item
+
+
 def collect_planned(db: sqlite3.Connection, from_date: date, to_date: date) -> list[dict]:
     items: list[dict] = []
     schedules = db.execute("SELECT * FROM schedules WHERE active=1").fetchall()
@@ -398,12 +427,13 @@ def collect_planned(db: sqlite3.Connection, from_date: date, to_date: date) -> l
         for due in schedule_dates(schedule, from_date, to_date):
             key = due.isoformat()
             if not occurrence_done(db, "schedule", schedule["id"], key):
-                items.append({
+                item = {
                     "source_type": "schedule", "source_id": schedule["id"], "occurrence_key": key,
                     "due_date": key, "entry_type": schedule["entry_type"], "amount": schedule["amount"],
                     "account_id": schedule["account_id"], "category": schedule["category"],
                     "description": schedule["name"], "name": schedule["name"],
-                })
+                }
+                items.append(apply_occurrence_override(db, item))
     plans = db.execute("SELECT * FROM installment_plans").fetchall()
     for plan in plans:
         current_date = date.fromisoformat(plan["statement_date"])
@@ -417,13 +447,102 @@ def collect_planned(db: sqlite3.Connection, from_date: date, to_date: date) -> l
             if occurrence_done(db, "installment", plan["id"], key):
                 continue
             amount = round(float(plan["total_amount"]) - per * (no - 1), 2) if no == int(plan["total_installments"]) else per
-            items.append({
+            item = {
                 "source_type": "installment", "source_id": plan["id"], "occurrence_key": key,
                 "due_date": due.isoformat(), "entry_type": "expense", "amount": amount,
                 "account_id": plan["account_id"], "category": plan["category"],
                 "description": f"{plan['name']} · {no}/{plan['total_installments']}",
                 "name": plan["name"], "installment_no": no, "installment_total": plan["total_installments"],
-            })
+            }
+            items.append(apply_occurrence_override(db, item))
+    items.sort(key=lambda x: (x["due_date"], x["description"].lower()))
+    return items
+
+
+def collect_occurrences(db: sqlite3.Connection, from_date: date, to_date: date) -> list[dict]:
+    items: list[dict] = []
+    schedules = db.execute("SELECT * FROM schedules").fetchall()
+    for schedule in schedules:
+        if not schedule["active"]:
+            # Completed occurrences remain editable even after a schedule is paused.
+            completed = db.execute(
+                """SELECT occurrence_key FROM completed_occurrences
+                   WHERE source_type='schedule' AND source_id=?""", (schedule["id"],)
+            ).fetchall()
+            allowed = {r["occurrence_key"] for r in completed}
+            due_dates = [date.fromisoformat(k) for k in allowed if from_date <= date.fromisoformat(k) <= to_date]
+        else:
+            due_dates = schedule_dates(schedule, from_date, to_date)
+        for due in due_dates:
+            key = due.isoformat()
+            completed = db.execute(
+                """SELECT e.id,e.entry_date,e.amount,e.account_id,e.category,e.description,a.name AS account_name,
+                          a.asset_code,cc.entry_id
+                   FROM completed_occurrences cc JOIN entries e ON e.id=cc.entry_id
+                   JOIN accounts a ON a.id=e.account_id
+                   WHERE cc.source_type='schedule' AND cc.source_id=? AND cc.occurrence_key=?""",
+                (schedule["id"], key),
+            ).fetchone()
+            if completed:
+                items.append({
+                    "source_type":"schedule","source_id":schedule["id"],"occurrence_key":key,
+                    "status":"completed","entry_id":completed["id"],"due_date":completed["entry_date"],
+                    "entry_type":schedule["entry_type"],"amount":completed["amount"],
+                    "account_id":completed["account_id"],"account_name":completed["account_name"],
+                    "asset_code":completed["asset_code"],"category":completed["category"],
+                    "description":completed["description"],"name":schedule["name"],
+                })
+            else:
+                item = apply_occurrence_override(db, {
+                    "source_type":"schedule","source_id":schedule["id"],"occurrence_key":key,
+                    "status":"pending","due_date":key,"entry_type":schedule["entry_type"],
+                    "amount":schedule["amount"],"account_id":schedule["account_id"],
+                    "category":schedule["category"],"description":schedule["name"],"name":schedule["name"],
+                })
+                account = db.execute("SELECT name,asset_code FROM accounts WHERE id=?", (item["account_id"],)).fetchone()
+                item["account_name"] = account["name"] if account else "?"
+                item["asset_code"] = account["asset_code"] if account else "TRY"
+                items.append(item)
+    plans = db.execute("SELECT * FROM installment_plans").fetchall()
+    for plan in plans:
+        statement = date.fromisoformat(plan["statement_date"])
+        first_date = add_months(statement, -(int(plan["current_installment"]) - 1))
+        per = round(float(plan["total_amount"]) / int(plan["total_installments"]), 2)
+        for no in range(1, int(plan["total_installments"]) + 1):
+            due = add_months(first_date, no - 1)
+            if not from_date <= due <= to_date:
+                continue
+            key = str(no)
+            completed = db.execute(
+                """SELECT e.id,e.entry_date,e.amount,e.account_id,e.category,e.description,a.name AS account_name,
+                          a.asset_code
+                   FROM completed_occurrences cc JOIN entries e ON e.id=cc.entry_id
+                   JOIN accounts a ON a.id=e.account_id
+                   WHERE cc.source_type='installment' AND cc.source_id=? AND cc.occurrence_key=?""",
+                (plan["id"], key),
+            ).fetchone()
+            if completed:
+                items.append({
+                    "source_type":"installment","source_id":plan["id"],"occurrence_key":key,
+                    "status":"completed","entry_id":completed["id"],"due_date":completed["entry_date"],
+                    "entry_type":"expense","amount":completed["amount"],"account_id":completed["account_id"],
+                    "account_name":completed["account_name"],"asset_code":completed["asset_code"],
+                    "category":completed["category"],"description":completed["description"],
+                    "name":plan["name"],"installment_no":no,"installment_total":plan["total_installments"],
+                })
+            else:
+                amount = round(float(plan["total_amount"]) - per * (no - 1), 2) if no == int(plan["total_installments"]) else per
+                item = apply_occurrence_override(db, {
+                    "source_type":"installment","source_id":plan["id"],"occurrence_key":key,
+                    "status":"pending","due_date":due.isoformat(),"entry_type":"expense","amount":amount,
+                    "account_id":plan["account_id"],"category":plan["category"],
+                    "description":f"{plan['name']} · {no}/{plan['total_installments']}",
+                    "name":plan["name"],"installment_no":no,"installment_total":plan["total_installments"],
+                })
+                account = db.execute("SELECT name,asset_code FROM accounts WHERE id=?", (item["account_id"],)).fetchone()
+                item["account_name"] = account["name"] if account else "?"
+                item["asset_code"] = account["asset_code"] if account else "TRY"
+                items.append(item)
     items.sort(key=lambda x: (x["due_date"], x["description"].lower()))
     return items
 
