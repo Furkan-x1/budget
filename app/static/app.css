@@ -199,7 +199,8 @@ html[data-theme="dark"] .daily-bar.expense{background:#bd786e}
 }
 
 
-/* Dashboard goals and income overview */
+
+/* Dashboard goals and total-asset overview */
 .dashboard-goals-panel{min-height:235px}
 .dashboard-goals-list{display:grid;gap:0}
 .dashboard-goal-item{padding:12px 0;border-top:1px solid var(--line)}
@@ -212,16 +213,10 @@ html[data-theme="dark"] .daily-bar.expense{background:#bd786e}
 .dashboard-goal-values strong{font-size:11px;color:var(--ink)}
 .dashboard-goal-values span{font-size:9px;color:var(--muted);white-space:nowrap}
 .dashboard-goal-item .schedule-sub{margin-top:5px}
-.dashboard-goal-more{padding-top:9px;border-top:1px solid var(--line);font-size:9px;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
-.dashboard-income-panel{margin-top:15px}
 .dashboard-income-total{display:flex;flex-direction:column;align-items:flex-end;gap:4px;white-space:nowrap}
 .dashboard-income-total span{font-size:9px;color:var(--muted)}
 .dashboard-income-total strong{font-size:13px;color:var(--green)}
-.income-chart-area{min-height:150px}
-.income-line-chart{max-height:205px}
-.income-chart-label{fill:var(--muted);font-size:9px}
 @media(max-width:620px){
-  .dashboard-income-panel .panel-heading{align-items:flex-start}
+  .history-panel .panel-heading{align-items:flex-start}
   .dashboard-income-total strong{font-size:11px}
-  .income-chart-label{font-size:8px}
 }
