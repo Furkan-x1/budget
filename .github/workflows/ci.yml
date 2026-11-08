@@ -23,3 +23,7 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: Check browser JavaScript syntax
         run: node --check app/static/app.js
+      - name: Validate Docker Compose
+        run: docker compose config --quiet
+      - name: Build Docker image
+        run: docker build -t budget:ci .
