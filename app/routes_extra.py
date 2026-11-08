@@ -236,6 +236,36 @@ def delete_goal(goal_id: int):
     return {"ok": True}
 
 
+@app.post("/api/occurrences/{source_type}/{source_id}/{occurrence_key}/uncomplete")
+def uncomplete_occurrence(source_type: Literal["schedule", "installment"], source_id: int,
+                          occurrence_key: str):
+    with db_conn() as db:
+        completed = db.execute(
+            """SELECT e.* FROM completed_occurrences c JOIN entries e ON e.id=c.entry_id
+               WHERE c.source_type=? AND c.source_id=? AND c.occurrence_key=?""",
+            (source_type, source_id, occurrence_key),
+        ).fetchone()
+        if completed is None:
+            raise HTTPException(404, "Gerçekleşmiş işlem kaydı bulunamadı")
+
+        db.execute(
+            """INSERT INTO occurrence_overrides(source_type,source_id,occurrence_key,due_date,amount,
+               account_id,category,description,updated_at) VALUES(?,?,?,?,?,?,?,?,?)
+               ON CONFLICT(source_type,source_id,occurrence_key) DO UPDATE SET
+               due_date=excluded.due_date,amount=excluded.amount,account_id=excluded.account_id,
+               category=excluded.category,description=excluded.description,updated_at=excluded.updated_at""",
+            (source_type, source_id, occurrence_key, completed["entry_date"], completed["amount"],
+             completed["account_id"], completed["category"], completed["description"], now_iso()),
+        )
+        db.execute(
+            """DELETE FROM completed_occurrences
+               WHERE source_type=? AND source_id=? AND occurrence_key=? AND entry_id=?""",
+            (source_type, source_id, occurrence_key, completed["id"]),
+        )
+        db.execute("DELETE FROM entries WHERE id=?", (completed["id"],))
+    return {"ok": True, "status": "pending"}
+
+
 @app.get("/api/analytics")
 def analytics(month: str | None = None, months: int = 12):
     selected = month or date.today().strftime("%Y-%m")
