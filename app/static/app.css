@@ -213,10 +213,10 @@ html[data-theme="dark"] .daily-bar.expense{background:#bd786e}
 .dashboard-goal-values strong{font-size:11px;color:var(--ink)}
 .dashboard-goal-values span{font-size:9px;color:var(--muted);white-space:nowrap}
 .dashboard-goal-item .schedule-sub{margin-top:5px}
-.dashboard-income-total{display:flex;flex-direction:column;align-items:flex-end;gap:4px;white-space:nowrap}
-.dashboard-income-total span{font-size:9px;color:var(--muted)}
-.dashboard-income-total strong{font-size:13px;color:var(--green)}
+.dashboard-current-value{display:flex;flex-direction:column;align-items:flex-end;gap:4px;white-space:nowrap}
+.dashboard-current-value span{font-size:9px;color:var(--muted)}
+.dashboard-current-value strong{font-size:13px;color:var(--green)}
 @media(max-width:620px){
   .history-panel .panel-heading{align-items:flex-start}
-  .dashboard-income-total strong{font-size:11px}
+  .dashboard-current-value strong{font-size:11px}
 }
