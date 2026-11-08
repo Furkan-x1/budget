@@ -20,6 +20,22 @@ A compact, single-user personal finance tracker for a private home network. One 
 - **Backup:** download the SQLite database from the sidebar.
 - **Optional LAN password:** set BUDGET_PASSWORD for one Basic Auth password.
 
+## Clone and start
+
+Because this repository is private, clone it while authenticated with an account that has access:
+
+~~~bash
+git clone https://github.com/Furkan-x1/budget.git
+cd budget
+cp .env.example .env
+~~~
+
+Edit .env and set BUDGET_PASSWORD to a long password when the LAN is shared. Then start the app:
+
+~~~bash
+docker compose up -d --build
+~~~
+
 ## Docker Compose
 
 ~~~bash
