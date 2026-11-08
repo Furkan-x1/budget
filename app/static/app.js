@@ -105,8 +105,47 @@ function renderNetWorthChart(points, target){
   const first=dateLabel(points[0].snapshot_date),last=dateLabel(points.at(-1).snapshot_date);
   el.innerHTML=`<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Net varlık geçmişi grafiği" class="line-chart"><line x1="${pad}" y1="${h-pad}" x2="${w-pad}" y2="${h-pad}" class="chart-axis"/><polygon points="${area}" class="chart-area-fill"/><polyline points="${poly}" class="chart-line"/>${coords.length<80?coords.map(([x,y])=>`<circle cx="${x}" cy="${y}" r="2.6" class="chart-dot"/>`).join(''):''}</svg><div class="chart-caption"><span>${esc(first)}</span><strong>${fmtTRY(values.at(-1))}</strong><span>${esc(last)}</span></div>`;
 }
+function renderDashboardGoals(goals){
+  const el=$('#dashboard-goals');
+  if(!goals?.length){el.innerHTML='<div class="empty-state">Henüz hedef eklemedin. Hedeflerini burada takip edebilirsin.</div>';return;}
+  el.innerHTML=goals.slice(0,4).map(g=>{
+    const trackingLabel=g.tracking_type==='total'?'Toplam net varlık (TL)':(g.account_name?'Hesap: '+g.account_name:'Hesap bağlanmamış');
+    const percent=Math.max(0,Math.min(100,Number(g.progress_percent||0)));
+    const status=percent>=100?'Hedef tamamlandı':fmtNum(percent,1)+'% tamamlandı · '+fmtAsset(g.remaining,g.asset_code)+' kaldı';
+    return '<div class="dashboard-goal-item">'+
+      '<div class="dashboard-goal-top"><div class="dashboard-goal-name">'+esc(g.name)+'</div><span class="dashboard-goal-percent">'+fmtNum(percent,1)+'%</span></div>'+
+      '<div class="dashboard-goal-meta">'+esc(trackingLabel)+' · '+(g.target_date?dateLabel(g.target_date):'Vade belirtilmedi')+(g.rate_stale?' · Bazı kurlar eski':'')+'</div>'+
+      '<div class="dashboard-goal-values"><strong>'+fmtAsset(g.progress,g.asset_code)+'</strong><span>'+fmtAsset(g.target_amount,g.asset_code)+' hedef</span></div>'+
+      '<div class="progress-track"><div class="progress-fill" style="width:'+percent+'%"></div></div>'+
+      '<div class="schedule-sub">'+status+'</div>'+
+    '</div>';
+  }).join('')+(goals.length>4?'<div class="dashboard-goal-more">'+(goals.length-4)+' hedef daha · <button class="small-link" data-page-link="goals">Tümünü gör →</button></div>':'');
+}
+function renderIncomeHistoryChart(monthly,target){
+  const el=$(target);
+  const points=(monthly||[]).map(item=>({month:item.month,value:Number(item.income||0)}));
+  if(!points.length||points.every(point=>point.value<=0)){
+    el.innerHTML='<div class="empty-state">Son 12 ayda kaydedilmiş gelir yok.</div>';return;
+  }
+  const w=760,h=205,padX=28,padTop=17,padBottom=31;
+  const max=Math.max(1,...points.map(point=>point.value));
+  const baseY=h-padBottom,plotHeight=baseY-padTop;
+  const coords=points.map((point,index)=>[
+    padX+(points.length===1?0:index*(w-padX*2)/(points.length-1)),
+    baseY-(point.value/max)*plotHeight
+  ]);
+  const poly=coords.map(point=>point.join(',')).join(' ');
+  const area=coords[0][0]+','+baseY+' '+poly+' '+coords[coords.length-1][0]+','+baseY;
+  const maxIndex=points.reduce((best,point,index)=>point.value>points[best].value?index:best,0);
+  const dots=coords.map((point,index)=>'<circle cx="'+point[0]+'" cy="'+point[1]+'" r="3.2" class="chart-dot"><title>'+esc(monthLabel(points[index].month))+': '+fmtTRY(points[index].value)+'</title></circle>').join('');
+  const labels=points.map((point,index)=>'<text x="'+coords[index][0]+'" y="'+(h-7)+'" text-anchor="middle" class="income-chart-label">'+esc(monthLabel(point.month))+'</text>').join('');
+  el.innerHTML='<svg viewBox="0 0 '+w+' '+h+'" role="img" aria-label="Son 12 ayın aylık toplam gelir grafiği" class="line-chart income-line-chart">'+
+    '<line x1="'+padX+'" y1="'+baseY+'" x2="'+(w-padX)+'" y2="'+baseY+'" class="chart-axis"/>'+
+    '<polygon points="'+area+'" class="chart-area-fill"/><polyline points="'+poly+'" class="chart-line"/>'+dots+labels+'</svg>'+
+    '<div class="chart-caption"><span>'+esc(monthLabel(points[0].month))+'</span><strong>En yüksek ay: '+esc(monthLabel(points[maxIndex].month))+' · '+fmtTRY(points[maxIndex].value)+'</strong><span>'+esc(monthLabel(points[points.length-1].month))+'</span></div>';
+}
 async function loadDashboard(){
-  const [d,a]=await Promise.all([api(`/api/dashboard?month=${state.month}`),api(`/api/analytics?month=${state.month}&months=12`)]);
+  const [d,a,goals]=await Promise.all([api(`/api/dashboard?month=${state.month}`),api(`/api/analytics?month=${state.month}&months=12`),api('/api/goals')]);
   $('#total-net-worth').textContent=fmtTRY(d.total_net_worth);$('#month-income').textContent=fmtTRY(d.income);$('#month-expense').textContent=fmtTRY(d.expense);$('#forecast-net').textContent=fmtTRY(d.forecast_net);
   $('#net-worth-note').textContent=`${d.accounts.length} hesap · borç/alacak dahil · ${monthLabel(state.month)}`;
   const months=a.monthly.slice(-6),max=Math.max(1,...months.flatMap(x=>[x.income,x.expense]));
@@ -114,6 +153,10 @@ async function loadDashboard(){
   $('#upcoming-list').innerHTML=d.upcoming.length?d.upcoming.map(plannedRow).join(''):'<div class="empty-state">Bu ay için yaklaşan işlem yok.</div>';
   $('#recent-list').innerHTML=d.recent.length?d.recent.map(e=>entryRow(e)).join(''):'<div class="empty-state">Henüz işlem yok.</div>';
   $('#rate-status').textContent=d.quote_updated_at?`Kur kaynağı: TCMB + piyasa verisi · Son güncelleme: ${new Date(d.quote_updated_at).toLocaleString('tr-TR')}${d.quote_stale?' · Bazı fiyatlar eski veya güncellenemedi.':''}`:'Kur verisi henüz alınmadı.';
+  renderDashboardGoals(goals);
+  const incomeTotal=a.monthly.reduce((sum,item)=>sum+Number(item.income||0),0);
+  $('#dashboard-income-total').textContent=fmtTRY(incomeTotal);
+  renderIncomeHistoryChart(a.monthly,'#dashboard-income-chart');
   renderNetWorthChart(a.net_worth_history,'#dashboard-networth-chart');
 }
 async function loadEntries(){const entries=await api(`/api/entries?month=${state.month}&limit=300`);state.entriesById=Object.fromEntries(entries.map(e=>[e.id,e]));$('#entry-count').textContent=`${entries.length} kayıt`;$('#all-entries').innerHTML=entries.length?entries.map(e=>entryRow(e,true)).join(''):'<div class="empty-state">Bu ay henüz işlem yok.</div>'}
@@ -207,7 +250,7 @@ async function loadDebts(){
   updateDebtPaymentAccounts();
 }
 async function loadGoals(){
-  const goals=await api('/api/goals');$('#goal-list').innerHTML=goals.length?goals.map(g=>{const trackingLabel=g.tracking_type==='total'?'Toplam net varlık (TL)':g.account_name?`Hesap: ${g.account_name}`:'Hesap bağlanmamış';return `<div class="goal-item"><div class="goal-top"><div><div class="schedule-title">${esc(g.name)}</div><div class="schedule-sub">Takip: ${esc(trackingLabel)} · ${dateLabel(g.target_date)}${g.rate_stale?' · Bazı kurlar eski':''}</div></div><button class="tiny-button danger" data-delete-goal="${g.id}">Sil</button></div><div class="goal-values"><strong>${fmtAsset(g.progress,g.asset_code)}</strong><span>${fmtAsset(g.target_amount,g.asset_code)} hedef</span></div><div class="progress-track"><div class="progress-fill" style="width:${g.progress_percent}%"></div></div><div class="schedule-sub">${fmtNum(g.progress_percent,1)}% tamamlandı · ${fmtAsset(g.remaining,g.asset_code)} kaldı</div></div>`}).join(''):'<div class="empty-state">Henüz hedef yok.</div>';
+  const goals=await api('/api/goals');renderDashboardGoals(goals);$('#goal-list').innerHTML=goals.length?goals.map(g=>{const trackingLabel=g.tracking_type==='total'?'Toplam net varlık (TL)':g.account_name?`Hesap: ${g.account_name}`:'Hesap bağlanmamış';return `<div class="goal-item"><div class="goal-top"><div><div class="schedule-title">${esc(g.name)}</div><div class="schedule-sub">Takip: ${esc(trackingLabel)} · ${dateLabel(g.target_date)}${g.rate_stale?' · Bazı kurlar eski':''}</div></div><button class="tiny-button danger" data-delete-goal="${g.id}">Sil</button></div><div class="goal-values"><strong>${fmtAsset(g.progress,g.asset_code)}</strong><span>${fmtAsset(g.target_amount,g.asset_code)} hedef</span></div><div class="progress-track"><div class="progress-fill" style="width:${g.progress_percent}%"></div></div><div class="schedule-sub">${fmtNum(g.progress_percent,1)}% tamamlandı · ${fmtAsset(g.remaining,g.asset_code)} kaldı</div></div>`}).join(''):'<div class="empty-state">Henüz hedef yok.</div>';
 }
 function comparisonText(current, previous, label){
   if(previous===null||previous===undefined||!previous)return `${label} için karşılaştırma verisi yok`;
