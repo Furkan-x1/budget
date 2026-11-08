@@ -291,7 +291,10 @@ def update_entry_record(db: sqlite3.Connection, entry: sqlite3.Row, fields: dict
             updates["amount"] = quantity
             updates["target_amount"] = cash_amount
         quotes = get_quote_map(db)
-        cash_value_try = amount_to_try(trade["cash_asset_code"], cash_amount, quotes)
+        cash_quote = quotes.get(trade["cash_asset_code"])
+        cash_value_try = cash_amount if trade["cash_asset_code"] == "TRY" else (
+            cash_amount * float(cash_quote["bid"]) if cash_quote else 0.0
+        )
         db.execute(
             """UPDATE trade_details SET asset_quantity=?,cash_amount=?,cash_value_try=?
                WHERE entry_id=?""", (quantity, cash_amount, cash_value_try, entry["id"])
