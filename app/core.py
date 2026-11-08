@@ -172,11 +172,19 @@ def init_db() -> None:
             account_id INTEGER REFERENCES accounts(id) ON DELETE SET NULL,
             target_date TEXT, note TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL
         );
-        CREATE TABLE IF NOT EXISTS net_worth_snapshots (
+        -- Additive migration: preserve all existing goals and their account links.
+                CREATE TABLE IF NOT EXISTS net_worth_snapshots (
             snapshot_date TEXT PRIMARY KEY, total_value REAL NOT NULL,
             rate_stale INTEGER NOT NULL DEFAULT 0
         );
         """)
+        goal_columns = {row["name"] for row in db.execute("PRAGMA table_info(goals)").fetchall()}
+        if "tracking_type" not in goal_columns:
+            db.execute("ALTER TABLE goals ADD COLUMN tracking_type TEXT NOT NULL DEFAULT 'account'")
+            db.execute(
+                "UPDATE goals SET tracking_type=CASE WHEN account_id IS NULL THEN 'unlinked' ELSE 'account' END"
+            )
+
         starter_categories = [
             ('Maaş','income'),('Ek gelir','income'),('Yatırım geliri','income'),
             ('Konut','expense'),('Market','expense'),('Ulaşım','expense'),('Yeme-içme','expense'),
@@ -278,6 +286,7 @@ class GoalIn(BaseModel):
     target_amount: float = Field(gt=0)
     asset_code: str
     account_id: int | None = None
+    tracking_type: Literal["account", "total", "unlinked"] | None = None
     target_date: date | None = None
     note: str = Field(default="", max_length=250)
 
@@ -347,6 +356,23 @@ def amount_to_try(asset_code: str, amount: float, quotes: dict[str, dict]) -> fl
         return float(amount)
     quote = quotes.get(asset_code)
     return float(amount) * float(quote["bid"]) if quote else 0.0
+
+
+def total_net_worth_try(db: sqlite3.Connection, quotes: dict[str, dict]) -> tuple[float, bool]:
+    total = 0.0
+    stale = False
+    for account in db.execute("SELECT * FROM accounts").fetchall():
+        balance = account_balance(db, account)
+        value, is_stale = value_in_try(account["asset_code"], balance, quotes)
+        total += -value if account["kind"] == "credit_card" else value
+        stale = stale or is_stale
+    for debt in db.execute("SELECT direction,asset_code,outstanding FROM debts WHERE outstanding>0").fetchall():
+        total += amount_to_try(debt["asset_code"], float(debt["outstanding"]), quotes) * (
+            1 if debt["direction"] == "receivable" else -1
+        )
+        if debt["asset_code"] != "TRY" and debt["asset_code"] not in quotes:
+            stale = True
+    return round(total, 2), stale
 
 
 def add_entry(db: sqlite3.Connection, *, entry_date: date, entry_type: str, account_id: int,
