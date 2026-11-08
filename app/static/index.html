@@ -163,14 +163,14 @@
         </div>
       </section>
       <section class="page" id="page-goals">
-        <div class="page-heading"><div><p class="eyebrow">BİRİKİM</p><h1>Hedefler</h1><p class="muted">Hedefini bir hesaba bağla; hesabın bakiyesi ilerleme olarak gösterilsin.</p></div></div>
+        <div class="page-heading"><div><p class="eyebrow">BİRİKİM</p><h1>Hedefler</h1><p class="muted">Belirli bir hesabı veya tüm net varlığını hedef olarak takip et.</p></div></div>
         <div class="content-grid">
-          <article class="panel form-panel"><div class="panel-heading"><div><h2>Yeni birikim hedefi</h2><p class="muted">İlerleme, bağladığın hesabın mevcut bakiyesinden hesaplanır.</p></div></div>
+          <article class="panel form-panel"><div class="panel-heading"><div><h2>Yeni birikim hedefi</h2><p class="muted">İlerleme, seçtiğin hesabın bakiyesinden veya tüm hesapların TL karşılığı toplam net varlığından hesaplanır.</p></div></div>
             <form id="goal-form" class="form-grid">
               <div class="field full"><label for="goal-name">Hedef adı</label><input required id="goal-name" name="name" placeholder="Örn. Acil durum fonu"></div>
               <div class="field"><label for="goal-asset">Hedef birimi</label><select id="goal-asset" name="asset_code"></select></div>
-              <div class="field"><label for="goal-target">Hedef tutar / miktar</label><input required type="number" min="0.000001" step="0.01" id="goal-target" name="target_amount"></div>
-              <div class="field full"><label for="goal-account">Takip edilecek hesap (aynı birimde)</label><select id="goal-account" name="account_id"><option value="">Hesap bağlama</option></select></div>
+              <div class="field"><label for="goal-target">Hedef tutar / miktar</label><input required type="number" min="0.000001" step="any" id="goal-target" name="target_amount"></div>
+              <div class="field full"><label for="goal-account">Takip edilecek hesap (aynı birimde)</label><select id="goal-account" name="account_id"><option value="">Hesap seç</option><option value="total">Toplam varlık (TL)</option></select></div>
               <div class="field"><label for="goal-date">Hedef tarihi</label><input type="text" inputmode="numeric" maxlength="10" data-date-input placeholder="GG.AA.YYYY" id="goal-date" name="target_date"></div>
               <div class="field"><label for="goal-note">Not</label><input id="goal-note" name="note"></div>
               <div class="form-actions full"><button class="button primary" type="submit">Hedef oluştur</button></div>
@@ -180,11 +180,23 @@
         </div>
       </section>
       <section class="page" id="page-reports">
-        <div class="page-heading"><div><p class="eyebrow">ANALİZ</p><h1>Raporlar</h1><p class="muted">Aylık nakit akışı, harcama dağılımı ve servet geçmişi.</p></div></div>
+        <div class="page-heading"><div><p class="eyebrow">ANALİZ</p><h1>Gelir ve gider analizi</h1><p class="muted">Aylık eğilimleri, günlük harcamaları ve birikim oranını takip et.</p></div></div>
+        <div class="summary-grid report-summary-grid">
+          <article class="summary-card"><div class="card-top"><span>Gelir</span><span class="card-icon green">↗</span></div><div class="metric-number positive" id="report-income">₺0,00</div><div class="card-foot" id="report-income-sub">Seçili ay</div></article>
+          <article class="summary-card"><div class="card-top"><span>Gider</span><span class="card-icon red">↘</span></div><div class="metric-number negative" id="report-expense">₺0,00</div><div class="card-foot" id="report-expense-sub">Seçili ay</div></article>
+          <article class="summary-card"><div class="card-top"><span>Net nakit akışı</span><span class="card-icon blue">⇄</span></div><div class="metric-number" id="report-net">₺0,00</div><div class="card-foot" id="report-net-sub">Gelir − gider</div></article>
+          <article class="summary-card"><div class="card-top"><span>Birikim oranı</span><span class="card-icon">◎</span></div><div class="metric-number" id="report-savings-rate">%0</div><div class="card-foot" id="report-savings-sub">Net / gelir</div></article>
+        </div>
+        <div class="report-insight-strip">
+          <div><span>Ortalama günlük gider</span><strong id="report-daily-average">₺0,00</strong></div>
+          <div><span>En yüksek gider kategorisi</span><strong id="report-top-category">Henüz veri yok</strong></div>
+        </div>
         <div class="reports-grid">
-          <article class="panel"><div class="panel-heading"><div><h2>Son 12 ay</h2><p class="muted">Gelir ve gider · TL karşılığı</p></div></div><div id="monthly-chart" class="monthly-chart"><div class="empty-state">Yükleniyor…</div></div></article>
-          <article class="panel"><div class="panel-heading"><div><h2>Harcama kategorileri</h2><p class="muted">Seçili ayın gider dağılımı</p></div></div><div id="category-chart" class="category-chart"><div class="empty-state">Yükleniyor…</div></div></article>
-          <article class="panel wide-panel"><div class="panel-heading"><div><h2>Net varlık geçmişi</h2><p class="muted">Günlük kaydedilmiş portföy değeri</p></div></div><div id="reports-networth-chart" class="chart-area"><div class="empty-state">Henüz geçmiş veri yok.</div></div><p class="hint">Net varlık geçmişi her gün uygulamayı açtığında kaydedilir. Geçmiş noktalar, o günün fiyatlarını korur.</p></article>
+          <article class="panel wide-panel"><div class="panel-heading"><div><h2>Aylık gelir ve gider</h2><p class="muted">Son 12 ay · yan yana karşılaştırma · TL</p></div><span class="legend"><i class="legend-income"></i> Gelir <i class="legend-expense"></i> Gider</span></div><div id="monthly-chart" class="monthly-chart"><div class="empty-state">Yükleniyor…</div></div></article>
+          <article class="panel"><div class="panel-heading"><div><h2>Aylık net nakit akışı</h2><p class="muted">Gelirden gider çıkarıldıktan sonra kalan</p></div></div><div id="monthly-net-chart" class="net-chart"><div class="empty-state">Yükleniyor…</div></div></article>
+          <article class="panel"><div class="panel-heading"><div><h2>Gider kategorileri</h2><p class="muted">Seçili ay ve önceki ay karşılaştırması</p></div></div><div id="category-chart" class="category-chart"><div class="empty-state">Yükleniyor…</div></div></article>
+          <article class="panel wide-panel"><div class="panel-heading"><div><h2>Günlük nakit akışı</h2><p class="muted">Seçili ayın gün gün gelir ve gider dağılımı</p></div><span class="legend"><i class="legend-income"></i> Gelir <i class="legend-expense"></i> Gider</span></div><div class="daily-chart-scroll"><div id="daily-chart" class="daily-chart"><div class="empty-state">Yükleniyor…</div></div></div></article>
+          <article class="panel wide-panel"><div class="panel-heading"><div><h2>Net varlık geçmişi</h2><p class="muted">Günlük kaydedilmiş toplam portföy değeri</p></div></div><div id="reports-networth-chart" class="chart-area"><div class="empty-state">Henüz geçmiş veri yok.</div></div><p class="hint">Net varlık geçmişi her gün uygulamayı açtığında kaydedilir. Geçmiş noktalar, o günün fiyatlarını korur.</p></article>
         </div>
         <p class="rate-footer" id="analytics-note"></p>
       </section>
