@@ -9,7 +9,8 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-import app.main as budget
+import app.core as budget
+import app.main  # noqa: F401 - registers the API routes on the core app
 
 
 async def quiet_quote_loop():
