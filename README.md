@@ -1,40 +1,80 @@
 # Budget
 
-A small, self-hosted personal finance tracker for a private home network. One Docker container, SQLite, and no external database or telemetry.
+A compact, single-user personal finance tracker for a private home network. One Docker container, one SQLite database, no external database, no account system, no telemetry.
 
-## First version
-- Cash, bank, credit-card and investment accounts.
-- TRY, USD, EUR, GBP, CHF, gram gold, quarter/half/full/Cumhuriyet gold and gram silver accounts.
-- Income, expense and account-to-account transfers.
-- Monthly, weekly and yearly recurring income/expenses.
-- Installment plans: entering `2/5` books installments 1 and 2 in their respective months and forecasts 3–5. `1/1` is booked only in the selected month.
-- Dashboard with monthly totals, account values, upcoming payments and cash-flow forecast.
-- Background quote refresh, last-known quote fallback and stale quote indicator.
-- SQLite database backup download.
-- Optional single Basic Auth password for shared LANs.
+## Features
 
-## Run
+- **Accounts:** cash, bank, credit-card and investment accounts.
+- **Currencies:** TRY, USD, EUR, GBP, CHF, JPY, CAD, AUD, CNY, AED, SAR, RUB and KWD.
+- **Gold:** gram, quarter, half, full and Cumhuriyet accounts. Metal accounts store physical quantity (grams or pieces), not a TL balance.
+- **Manual buy/sell records:** select the asset account and the paying/receiving account, then enter the actual amount deducted or actually received and the exact asset quantity. Fees, tax, commission and spread are captured in the real cost/proceeds. Buys and sells are transfers, not income/expenses. Market bid/ask prices only value the current portfolio.
+- **Credit cards:** card liability is kept as a separate account. Purchases raise the amount owed; paying the card is a transfer from the bank account and is not counted as a second expense.
+- **Transactions:** income, expenses and account-to-account transfers.
+- **Recurring transactions:** monthly, weekly or yearly income/expense schedules.
+- **Installments:** enter total price, current installment (2/5) and statement date. The current and earlier installments are booked into their months; later installments are forecast. 1/1 is booked only in its selected month.
+- **Custom categories:** add, rename and delete categories. Categories used in historical transactions are protected from deletion.
+- **Debts and receivables:** optional initial account movement; partial payments and collections update the linked account and remaining balance. Debt principal movements do not inflate normal income/expense totals.
+- **Savings goals:** link each goal to one account in the same currency/asset. Progress is calculated from that account balance, without creating a duplicate asset.
+- **Reports:** monthly income/expense bars, expense categories and daily net-worth history.
+- **Quotes:** background refresh every 15 minutes; last successful values are retained and stale quotes are labelled.
+- **Backup:** download the SQLite database from the sidebar.
+- **Optional LAN password:** set BUDGET_PASSWORD for one Basic Auth password.
 
-```bash
+## Docker Compose
+
+~~~bash
 docker compose up -d --build
-```
+~~~
 
-Open `http://<docker-host-ip>:8088` from your local network.
+Open http://<docker-host-ip>:8088 on your local network. Data persists in the budget_data Docker volume. The container uses Europe/Istanbul for local dates.
 
-Data persists in the `budget_data` Docker volume. For optional password protection, create `.env` beside `compose.yaml`:
+Optional password: create .env beside compose.yaml:
 
-```env
+~~~env
 BUDGET_PASSWORD=choose-a-long-local-password
-```
+~~~
 
-Then run `docker compose up -d --force-recreate`. Basic Auth username: `budget`.
+Then recreate the container:
 
-## Network and privacy
-All financial records stay in the local SQLite database. The only outbound request is a public price feed; no personal or financial data is sent to it. No analytics, telemetry, cloud account, advertising or bank connection is included. Do not forward port 8088 to the public internet. Set `BUDGET_PASSWORD` on shared LANs.
+~~~bash
+docker compose up -d --force-recreate
+~~~
 
-The default feed documents TCMB reference FX rates and market sources for Turkish gold quotes. FX and gold can update at different frequencies. All quotes are estimates, may be delayed, and are visibly marked stale when the provider indicates old data or a refresh fails. The last successfully stored quote is retained.
+Basic Auth username: budget.
 
-Historical transactions in non-TRY accounts are converted to TRY using the latest available quote in this first version. Credit-card purchases increase the outstanding card balance; a transfer from a bank account to the card account reduces that liability and is not counted as a second expense.
+## Local network and privacy
 
-## Backup
-Use **Veritabanı yedeği al** in the sidebar to download `budget-backup.db`. Keep the file outside the Docker host. To restore, stop the container and replace `budget.db` in the mounted `/data` volume with the backup.
+- Financial records stay in SQLite in the persistent volume.
+- No bank integration, cloud account, external database, analytics, advertisements or telemetry.
+- The only outbound traffic is a public market-price JSON feed. No personal or financial data is sent to the provider.
+- The default feed is currency-api-tr (RATES_URL can override it). It provides currency and Turkish gold bid/ask quotes. FX reference prices and gold quotes can update at different speeds; they are estimates, not guaranteed execution prices.
+- When refresh fails, the last successful quote is retained and marked stale. Manual trade amounts are never overwritten by market prices.
+- Do not expose port 8088 to the public internet. On a shared LAN, set BUDGET_PASSWORD and restrict access with the host firewall.
+
+## Accounting behavior
+
+- Account balances remain in their native unit. Portfolio values use the latest available bid quote (the indicative price you could sell at).
+- Buying decreases the selected payment account by the entered real cost and increases the asset account by the exact quantity. Selling decreases the asset quantity and increases the receiving account by the entered net proceeds.
+- Fees, tax and spread are included in the manually entered cash amount. Buys and sells do not inflate income/expense totals.
+- Payable debts reduce net worth; receivables increase it. Credit-card balances reduce net worth too.
+- Net-worth history stores one snapshot per day when the dashboard is opened; that day's latest opening updates the snapshot.
+- Historical non-TRY cashflow charts are converted using current quotes because historical daily FX rates are not stored. Net-worth snapshots preserve the TL value captured on each date.
+
+## Backup and restore
+
+Use the sidebar's database backup action. Keep a copy outside the Docker host. To restore, stop the container and replace budget.db in the named volume mounted at /data with the backup.
+
+## Development
+
+Run the API smoke test with:
+
+~~~bash
+python -m unittest discover -s tests
+~~~
+
+Run locally with:
+
+~~~bash
+python -m pip install -r requirements.txt
+DATA_DIR=./data uvicorn app.main:app --reload --port 8080
+~~~
