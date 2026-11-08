@@ -193,7 +193,7 @@ function setTradeType(type){
 function updateGoalAccountOptions(){
   const asset=$('#goal-asset')?.value||'TRY';const el=$('#goal-account');if(!el)return;
   const old=el.value;const options=state.accounts.filter(a=>a.kind!=='credit_card'&&a.asset_code===asset);
-  el.innerHTML='<option value="">Hesap seç</option><option value="total">Toplam varlık (TL)</option>'+accountOptions(options);
+  el.innerHTML='<option value="">Hesap seç</option><option value="total">Toplam net varlık (TL)</option>'+accountOptions(options);
   if(old==='total')el.value='total';else if(options.some(a=>String(a.id)===old))el.value=old;
 }
 function updateDebtOpeningAccounts(){const asset=$('#debt-asset')?.value||'TRY';const el=$('#debt-opening-account');if(!el)return;const old=el.value;const choices=state.accounts.filter(a=>a.kind!=='credit_card'&&a.asset_code===asset);el.innerHTML='<option value="">Sadece borç/alacak kaydı oluştur</option>'+accountOptions(choices);if(choices.some(a=>String(a.id)===old))el.value=old;}
