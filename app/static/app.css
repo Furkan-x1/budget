@@ -123,3 +123,77 @@ html[data-theme="dark"] .text-button:hover{color:#c1dfc8}
 html[data-theme="dark"] .eyebrow{color:#8fa293}
 html[data-theme="dark"] .date-input::placeholder,
 html[data-theme="dark"] [data-date-input]::placeholder{color:#748578}
+
+
+/* Expanded cashflow and report charts */
+.cashflow-bars{height:170px;align-items:stretch;justify-content:space-around;gap:12px;padding:7px 5px 0}
+.dash-month{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:8px}
+.dash-month-bars{height:142px;width:100%;display:flex;align-items:flex-end;justify-content:center;gap:4px;border-bottom:1px solid var(--line);padding:0 2px}
+.dash-month-bar{width:min(34%,19px);min-height:0;border-radius:5px 5px 0 0;display:block;transition:height .2s}
+.dash-month-bar.income{background:#78a98a}
+.dash-month-bar.expense{background:#d48b80}
+.dash-month-label{font-size:9px;color:var(--muted);white-space:nowrap}
+.report-summary-grid{margin:0 0 14px}
+.report-insight-strip{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:-1px 0 16px}
+.report-insight-strip>div{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:12px 15px;box-shadow:var(--shadow)}
+.report-insight-strip span{font-size:10px;color:var(--muted)}
+.report-insight-strip strong{font-size:12px;color:var(--ink);text-align:right}
+.reports-grid .wide-panel{grid-column:1/-1}
+.reports-grid .monthly-chart{height:230px;gap:8px}
+.reports-grid .month-column{gap:9px}
+.reports-grid .month-bars{height:185px;gap:4px;border-bottom:1px solid var(--line);position:relative}
+.reports-grid .month-bar{width:min(38%,18px);min-height:0;transition:height .2s}
+.reports-grid .month-column small{font-size:9px}
+.net-chart{min-height:205px;display:flex;flex-direction:column;justify-content:center;gap:10px}
+.net-chart-grid{height:174px;display:flex;align-items:stretch;justify-content:space-between;gap:6px}
+.net-column{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:8px}
+.net-track{height:145px;width:100%;position:relative}
+.net-zero{position:absolute;top:50%;left:0;right:0;height:1px;background:var(--line)}
+.net-bar{position:absolute;left:50%;transform:translateX(-50%);width:min(48%,18px);min-height:0;border-radius:4px}
+.net-bar.positive{background:#77a889}
+.net-bar.negative{background:#d48b80}
+.net-column small{font-size:8px;color:var(--muted);white-space:nowrap}
+.net-chart-legend{display:flex;gap:15px;justify-content:center;color:var(--muted);font-size:9px}
+.net-chart-legend span{display:flex;align-items:center;gap:5px}
+.net-chart-legend i{width:7px;height:7px;border-radius:2px;display:inline-block}
+.net-positive{background:#77a889}.net-negative{background:#d48b80}
+.category-compare{font-size:9px;color:var(--muted);margin-top:-2px}
+.daily-chart-scroll{overflow-x:auto;padding-bottom:5px}
+.daily-chart{min-width:700px;height:180px;display:grid;grid-template-columns:repeat(31,minmax(14px,1fr));gap:5px;align-items:stretch}
+.daily-column{min-width:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:7px}
+.daily-bars{height:150px;width:100%;display:flex;align-items:flex-end;justify-content:center;gap:2px;border-bottom:1px solid var(--line)}
+.daily-bar{width:42%;max-width:9px;min-height:0;display:block;border-radius:3px 3px 0 0}
+.daily-bar.income{background:#78a98a}
+.daily-bar.expense{background:#d48b80}
+.daily-column small{height:10px;font-size:8px;color:var(--muted)}
+html[data-theme="dark"] .dash-month-bars,
+html[data-theme="dark"] .daily-bars{border-color:var(--line)}
+html[data-theme="dark"] .report-insight-strip>div{background:var(--panel);border-color:var(--line)}
+html[data-theme="dark"] .report-insight-strip strong{color:var(--ink)}
+html[data-theme="dark"] .net-zero{background:#3b493e}
+html[data-theme="dark"] .net-bar.positive,
+html[data-theme="dark"] .net-positive{background:#6fa982}
+html[data-theme="dark"] .net-bar.negative,
+html[data-theme="dark"] .net-negative{background:#bd786e}
+html[data-theme="dark"] .dash-month-bar.income,
+html[data-theme="dark"] .daily-bar.income{background:#6fa982}
+html[data-theme="dark"] .dash-month-bar.expense,
+html[data-theme="dark"] .daily-bar.expense{background:#bd786e}
+@media(max-width:850px){
+  .reports-grid .wide-panel{grid-column:1/-1}
+}
+@media(max-width:620px){
+  .cashflow-bars{height:160px;gap:6px;padding-left:0;padding-right:0}
+  .dash-month-bars{height:125px}
+  .dash-month-label{font-size:8px}
+  .report-insight-strip{grid-template-columns:1fr;gap:7px}
+  .report-insight-strip>div{padding:10px 12px}
+  .reports-grid .monthly-chart{height:200px;gap:3px}
+  .reports-grid .month-bars{height:155px;gap:2px}
+  .reports-grid .month-bar{width:42%}
+  .reports-grid .month-column small{font-size:7px}
+  .net-chart-grid{gap:2px}
+  .net-column small{font-size:7px}
+  .net-bar{width:55%}
+  .daily-chart{min-width:660px}
+}
