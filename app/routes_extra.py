@@ -166,16 +166,33 @@ def delete_debt(debt_id: int):
 @app.get("/api/goals")
 def list_goals():
     with db_conn() as db:
-        rows = db.execute("""SELECT g.*,a.name AS account_name,a.asset_code AS account_asset_code
-                              FROM goals g LEFT JOIN accounts a ON a.id=g.account_id ORDER BY g.id DESC""").fetchall()
+        rows = db.execute(
+            """SELECT g.*,a.name AS account_name,a.asset_code AS account_asset_code
+               FROM goals g LEFT JOIN accounts a ON a.id=g.account_id ORDER BY g.id DESC"""
+        ).fetchall()
+        quotes = get_quote_map(db)
+        total_net_worth, rate_stale = total_net_worth_try(db, quotes)
         result = []
         for row in rows:
             item = dict(row)
-            if row["account_id"]:
+            tracking_type = item.get("tracking_type") or ("account" if row["account_id"] else "unlinked")
+            item["tracking_type"] = tracking_type
+            if tracking_type == "total":
+                item["progress"] = max(0.0, total_net_worth)
+                item["account_name"] = "Toplam varlık"
+                item["account_asset_code"] = "TRY"
+                item["rate_stale"] = rate_stale
+            elif tracking_type == "account" and row["account_id"]:
                 account = ensure_account(db, row["account_id"])
-                item["progress"] = max(0, account_balance(db, account))
+                item["progress"] = max(0.0, account_balance(db, account))
+                item["account_name"] = account["name"]
+                item["account_asset_code"] = account["asset_code"]
+                item["rate_stale"] = False
             else:
-                item["progress"] = 0
+                item["progress"] = 0.0
+                item["account_name"] = None
+                item["account_asset_code"] = None
+                item["rate_stale"] = False
             item["progress_percent"] = min(100, item["progress"] / item["target_amount"] * 100)
             item["remaining"] = max(0, item["target_amount"] - item["progress"])
             result.append(item)
@@ -186,16 +203,28 @@ def list_goals():
 def create_goal(data: GoalIn):
     if data.asset_code not in ASSETS:
         raise HTTPException(400, "Desteklenmeyen para/varlık türü")
-    with db_conn() as db:
+    tracking_type = data.tracking_type or ("account" if data.account_id is not None else "unlinked")
+    if tracking_type == "total":
+        if data.asset_code != "TRY":
+            raise HTTPException(400, "Toplam varlık hedefi TL cinsinden takip edilir")
         if data.account_id is not None:
+            raise HTTPException(400, "Toplam varlık hedefinde tek hesap seçilmemeli")
+    elif tracking_type == "account":
+        if data.account_id is None:
+            raise HTTPException(400, "Hesap takibi için bir hesap seçmelisin")
+    elif data.account_id is not None:
+        raise HTTPException(400, "Hesap seçmeden hedef oluştur")
+    with db_conn() as db:
+        if tracking_type == "account":
             account = ensure_account(db, data.account_id)
             if account["asset_code"] != data.asset_code:
                 raise HTTPException(400, "Hedef hesabının para/varlık türü hedefle aynı olmalı")
         cur = db.execute(
-            "INSERT INTO goals(name,target_amount,asset_code,account_id,target_date,note,created_at) VALUES(?,?,?,?,?,?,?)",
-            (data.name.strip(), data.target_amount, data.asset_code, data.account_id,
+            """INSERT INTO goals(name,target_amount,asset_code,account_id,tracking_type,target_date,note,created_at)
+               VALUES(?,?,?,?,?,?,?,?)""",
+            (data.name.strip(), data.target_amount, data.asset_code, data.account_id, tracking_type,
              data.target_date.isoformat() if data.target_date else None, data.note.strip(), now_iso()))
-    return {"id": cur.lastrowid}
+    return {"id": cur.lastrowid, "tracking_type": tracking_type}
 
 
 @app.delete("/api/goals/{goal_id}")
@@ -215,6 +244,12 @@ def analytics(month: str | None = None, months: int = 12):
     except ValueError:
         raise HTTPException(400, "Ay YYYY-AA formatında olmalı")
     months = min(max(months, 3), 36)
+    previous_date = add_months(selected_date, -1)
+    previous_month = previous_date.strftime("%Y-%m")
+    month_end = add_months(selected_date, 1) - timedelta(days=1)
+    days_in_month = calendar.monthrange(selected_date.year, selected_date.month)[1]
+
+    excluded_categories = ("Borç ödemesi", "Borç tahsilatı", "Borç alınan para", "Verilen borç")
     with db_conn() as db:
         quotes = get_quote_map(db)
         monthly = []
@@ -222,26 +257,94 @@ def analytics(month: str | None = None, months: int = 12):
             start = add_months(selected_date, -offset)
             key = start.strftime("%Y-%m")
             rows = db.execute(
-                """SELECT e.entry_type,e.amount,a.asset_code FROM entries e JOIN accounts a ON a.id=e.account_id
+                """SELECT e.entry_type,e.amount,a.asset_code FROM entries e
+                   JOIN accounts a ON a.id=e.account_id
                    WHERE substr(e.entry_date,1,7)=? AND e.entry_type IN ('income','expense')
-               AND COALESCE(e.category,'') NOT IN ('Borç ödemesi','Borç tahsilatı','Borç alınan para','Verilen borç')""", (key,)).fetchall()
-            income = sum(amount_to_try(r["asset_code"], float(r["amount"]), quotes) for r in rows if r["entry_type"] == "income")
-            expense = sum(amount_to_try(r["asset_code"], float(r["amount"]), quotes) for r in rows if r["entry_type"] == "expense")
-            monthly.append({"month": key, "income": round(income, 2), "expense": round(expense, 2)})
-        category_rows = db.execute(
-            """SELECT e.category,e.amount,a.asset_code FROM entries e JOIN accounts a ON a.id=e.account_id
-               WHERE substr(e.entry_date,1,7)=? AND e.entry_type='expense'
-               AND COALESCE(e.category,'') NOT IN ('Borç ödemesi','Borç tahsilatı','Borç alınan para','Verilen borç')""", (selected,)).fetchall()
-        category_totals: dict[str, float] = {}
-        for row in category_rows:
-            cat = row["category"] or "Kategorisiz"
-            category_totals[cat] = category_totals.get(cat, 0) + amount_to_try(row["asset_code"], float(row["amount"]), quotes)
+                   AND COALESCE(e.category,'') NOT IN (?,?,?,?)""",
+                (key, *excluded_categories)).fetchall()
+            income = sum(amount_to_try(r["asset_code"], float(r["amount"]), quotes)
+                         for r in rows if r["entry_type"] == "income")
+            expense = sum(amount_to_try(r["asset_code"], float(r["amount"]), quotes)
+                          for r in rows if r["entry_type"] == "expense")
+            monthly.append({
+                "month": key, "income": round(income, 2), "expense": round(expense, 2),
+                "net": round(income-expense, 2),
+            })
+
+        daily_rows = db.execute(
+            """SELECT e.entry_date,e.entry_type,e.amount,a.asset_code FROM entries e
+               JOIN accounts a ON a.id=e.account_id
+               WHERE substr(e.entry_date,1,7)=? AND e.entry_type IN ('income','expense')
+               AND COALESCE(e.category,'') NOT IN (?,?,?,?)""",
+            (selected, *excluded_categories)).fetchall()
+        daily_map: dict[str, dict[str, float]] = {}
+        for row in daily_rows:
+            day = row["entry_date"]
+            daily_map.setdefault(day, {"income": 0.0, "expense": 0.0})
+            daily_map[day][row["entry_type"]] += amount_to_try(row["asset_code"], float(row["amount"]), quotes)
+        daily = []
+        cumulative_expense = 0.0
+        for day_no in range(1, days_in_month + 1):
+            day = date(selected_date.year, selected_date.month, day_no).isoformat()
+            amounts = daily_map.get(day, {"income": 0.0, "expense": 0.0})
+            cumulative_expense += amounts["expense"]
+            daily.append({
+                "date": day, "day": day_no,
+                "income": round(amounts["income"], 2), "expense": round(amounts["expense"], 2),
+                "net": round(amounts["income"]-amounts["expense"], 2),
+                "cumulative_expense": round(cumulative_expense, 2),
+            })
+
+        def category_totals_for(month_key: str) -> dict[str, float]:
+            rows = db.execute(
+                """SELECT e.category,e.amount,a.asset_code FROM entries e
+                   JOIN accounts a ON a.id=e.account_id
+                   WHERE substr(e.entry_date,1,7)=? AND e.entry_type='expense'
+                   AND COALESCE(e.category,'') NOT IN (?,?,?,?)""",
+                (month_key, *excluded_categories)).fetchall()
+            totals: dict[str, float] = {}
+            for row in rows:
+                name = row["category"] or "Kategorisiz"
+                totals[name] = totals.get(name, 0.0) + amount_to_try(row["asset_code"], float(row["amount"]), quotes)
+            return totals
+
+        current_categories = category_totals_for(selected)
+        previous_categories = category_totals_for(previous_month)
+        categories = [
+            {"name": name, "amount": round(amount, 2),
+             "previous_amount": round(previous_categories.get(name, 0.0), 2),
+             "change": round((amount/previous_categories[name]-1)*100, 1) if previous_categories.get(name, 0)>0 else None}
+            for name, amount in sorted(current_categories.items(), key=lambda x: -x[1])
+        ]
         snapshots = [dict(r) for r in db.execute(
             "SELECT * FROM net_worth_snapshots ORDER BY snapshot_date DESC LIMIT 365").fetchall()][::-1]
-    return {"month": selected, "monthly": monthly,
-            "categories": [{"name": k, "amount": round(v, 2)} for k, v in sorted(category_totals.items(), key=lambda x: -x[1])],
-            "net_worth_history": snapshots,
-            "note": "Geçmiş dövizli işlemlerin TL karşılığı mevcut kurlarla hesaplanır; net varlık grafiği ise kaydedildiği günün değerini korur."}
+
+    current_month = monthly[-1]
+    prior_month = monthly[-2] if len(monthly) > 1 else {"income": 0.0, "expense": 0.0, "net": 0.0}
+    income = current_month["income"]
+    expense = current_month["expense"]
+    net = current_month["net"]
+    elapsed_days = date.today().day if selected == date.today().strftime("%Y-%m") else days_in_month
+    average_daily_expense = expense / max(1, min(days_in_month, elapsed_days))
+    savings_rate = (net / income * 100) if income > 0 else None
+
+    return {
+        "month": selected, "previous_month": previous_month,
+        "monthly": monthly, "daily": daily, "categories": categories,
+        "summary": {
+            "income": income, "expense": expense, "net": net,
+            "savings_rate": round(savings_rate, 1) if savings_rate is not None else None,
+            "average_daily_expense": round(average_daily_expense, 2),
+            "income_previous": prior_month["income"], "expense_previous": prior_month["expense"],
+            "net_previous": prior_month["net"],
+            "income_change": round((income/prior_month["income"]-1)*100,1) if prior_month["income"] else None,
+            "expense_change": round((expense/prior_month["expense"]-1)*100,1) if prior_month["expense"] else None,
+            "net_change": round((net-prior_month["net"]),2),
+            "top_category": categories[0] if categories else None,
+        },
+        "net_worth_history": snapshots,
+        "note": "Geçmiş dövizli işlemlerin TL karşılığı mevcut kurlarla hesaplanır; net varlık grafiği ise kaydedildiği günün değerini korur.",
+    }
 
 
 @app.get("/api/backup")
