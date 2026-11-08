@@ -206,10 +206,18 @@ def complete_schedule(schedule_id: int, data: OccurrenceCompleteIn):
             raise HTTPException(400, "Bu tarih tekrarlanan işlem takvimine uymuyor")
         if occurrence_done(db, "schedule", schedule_id, data.occurrence_key):
             raise HTTPException(409, "Bu işlem zaten tamamlanmış")
-        entry_id = add_entry(db, entry_date=due, entry_type=schedule["entry_type"],
-            account_id=schedule["account_id"], amount=schedule["amount"],
-            category=schedule["category"], description=schedule["name"],
+        override = occurrence_override(db, "schedule", schedule_id, data.occurrence_key)
+        actual_due = date.fromisoformat(override["due_date"]) if override.get("due_date") else due
+        actual_account = int(override.get("account_id") or schedule["account_id"])
+        actual_amount = float(override.get("amount") or schedule["amount"])
+        actual_category = override.get("category") if override.get("category") is not None else schedule["category"]
+        actual_description = override.get("description") if override.get("description") is not None else schedule["name"]
+        entry_id = add_entry(db, entry_date=actual_due, entry_type=schedule["entry_type"],
+            account_id=actual_account, amount=actual_amount,
+            category=actual_category, description=actual_description,
             source_type="schedule", source_id=schedule_id, occurrence_key=data.occurrence_key)
+        db.execute("DELETE FROM occurrence_overrides WHERE source_type='schedule' AND source_id=? AND occurrence_key=?",
+                   (schedule_id, data.occurrence_key))
         db.execute(
             "INSERT INTO completed_occurrences(source_type,source_id,occurrence_key,entry_id,completed_at) VALUES('schedule',?,?,?,?)",
             (schedule_id, data.occurrence_key, entry_id, now_iso()),
@@ -275,10 +283,19 @@ def complete_installment(plan_id: int, data: OccurrenceCompleteIn):
         due = add_months(first_date, no - 1)
         per = round(float(plan["total_amount"]) / int(plan["total_installments"]), 2)
         amount = round(float(plan["total_amount"]) - per * (no - 1), 2) if no == int(plan["total_installments"]) else per
-        entry_id = add_entry(db, entry_date=due, entry_type="expense",
-            account_id=plan["account_id"], amount=amount, category=plan["category"],
-            description=f"{plan['name']} · {no}/{plan['total_installments']}",
-            source_type="installment", source_id=plan_id, occurrence_key=str(no))
+        key = str(no)
+        override = occurrence_override(db, "installment", plan_id, key)
+        actual_due = date.fromisoformat(override["due_date"]) if override.get("due_date") else due
+        actual_account = int(override.get("account_id") or plan["account_id"])
+        actual_amount = float(override.get("amount") or amount)
+        actual_category = override.get("category") if override.get("category") is not None else plan["category"]
+        actual_description = override.get("description") if override.get("description") is not None else f"{plan['name']} · {no}/{plan['total_installments']}"
+        entry_id = add_entry(db, entry_date=actual_due, entry_type="expense",
+            account_id=actual_account, amount=actual_amount, category=actual_category,
+            description=actual_description,
+            source_type="installment", source_id=plan_id, occurrence_key=key)
+        db.execute("DELETE FROM occurrence_overrides WHERE source_type='installment' AND source_id=? AND occurrence_key=?",
+                   (plan_id, key))
         db.execute(
             "INSERT INTO completed_occurrences(source_type,source_id,occurrence_key,entry_id,completed_at) VALUES('installment',?,?,?,?)",
             (plan_id, str(no), entry_id, now_iso()),
