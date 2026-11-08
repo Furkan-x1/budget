@@ -165,7 +165,7 @@ function openEditOccurrence(source,id,key){
   $('#edit-target-amount-field').classList.add('hidden');$('#edit-amount-field').classList.remove('hidden');$('#edit-category-field').classList.remove('hidden');
   const accountField=$('#edit-account-field');accountField.classList.toggle('hidden',item.status==='completed');
   if(item.status!=='completed'){
-    $('#edit-account').innerHTML=accountOptions(state.accounts.filter(a=>a.kind!=='credit_card'));
+    $('#edit-account').innerHTML=accountOptions(state.accounts);
     $('#edit-account').value=String(item.account_id);
   }
   $('#edit-dialog').showModal();bindDateInputs($('#edit-dialog'));
