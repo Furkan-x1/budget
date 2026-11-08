@@ -494,7 +494,7 @@ def collect_planned(db: sqlite3.Connection, from_date: date, to_date: date) -> l
             due = add_months(first_date, no - 1)
             override = occurrence_override(db, "installment", plan["id"], key)
             actual_due = date.fromisoformat(override["due_date"]) if override.get("due_date") else due
-            if not from_date <= actual_due <= to_date or no <= int(plan["current_installment"]):
+            if not from_date <= actual_due <= to_date:
                 continue
             if occurrence_done(db, "installment", plan["id"], key):
                 continue
@@ -597,7 +597,7 @@ def collect_occurrences(db: sqlite3.Connection, from_date: date, to_date: date) 
             else:
                 override = occurrence_override(db, "installment", plan["id"], key)
                 actual_due = date.fromisoformat(override["due_date"]) if override.get("due_date") else due
-                if no <= int(plan["current_installment"]) or not from_date <= actual_due <= to_date:
+                if not from_date <= actual_due <= to_date:
                     continue
                 amount = round(float(plan["total_amount"]) - per * (no - 1), 2) if no == int(plan["total_installments"]) else per
                 item = apply_occurrence_override(db, {
