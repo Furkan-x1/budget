@@ -249,3 +249,183 @@ def backup():
     if not DB_PATH.exists():
         raise HTTPException(404, "Henüz veritabanı bulunamadı")
     return FileResponse(DB_PATH, media_type="application/octet-stream", filename="budget-backup.db")
+
+
+class EntryUpdate(BaseModel):
+    entry_date: date | None = None
+    amount: float | None = Field(default=None, gt=0)
+    target_amount: float | None = Field(default=None, gt=0)
+    category: str | None = Field(default=None, max_length=60)
+    description: str | None = Field(default=None, max_length=160)
+    trade_asset_quantity: float | None = Field(default=None, gt=0)
+    trade_cash_amount: float | None = Field(default=None, gt=0)
+
+
+class OccurrenceUpdate(BaseModel):
+    due_date: date | None = None
+    amount: float | None = Field(default=None, gt=0)
+    account_id: int | None = None
+    category: str | None = Field(default=None, max_length=60)
+    description: str | None = Field(default=None, max_length=160)
+
+
+def update_entry_record(db: sqlite3.Connection, entry: sqlite3.Row, fields: dict) -> None:
+    updates: dict = {}
+    for key in ("entry_date", "category", "description"):
+        if key in fields and fields[key] is not None:
+            value = fields[key].isoformat() if key == "entry_date" else fields[key].strip()
+            updates[key] = value
+
+    trade = db.execute("SELECT * FROM trade_details WHERE entry_id=?", (entry["id"],)).fetchone()
+    if trade:
+        quantity = float(fields.get("trade_asset_quantity", trade["asset_quantity"]))
+        cash_amount = float(fields.get("trade_cash_amount", trade["cash_amount"]))
+        if "amount" in fields or "target_amount" in fields:
+            raise HTTPException(400, "Alım/satım için varlık miktarı ve gerçek nakit tutarı ayrı düzenlenmeli")
+        if quantity <= 0 or cash_amount <= 0:
+            raise HTTPException(400, "Alım/satım tutarları sıfırdan büyük olmalı")
+        if trade["trade_type"] == "buy":
+            updates["amount"] = cash_amount
+            updates["target_amount"] = quantity
+        else:
+            updates["amount"] = quantity
+            updates["target_amount"] = cash_amount
+        quotes = get_quote_map(db)
+        cash_value_try = amount_to_try(trade["cash_asset_code"], cash_amount, quotes)
+        db.execute(
+            """UPDATE trade_details SET asset_quantity=?,cash_amount=?,cash_value_try=?
+               WHERE entry_id=?""", (quantity, cash_amount, cash_value_try, entry["id"])
+        )
+    elif entry["source_type"] in ("debt", "debt_opening") and "amount" in fields:
+        new_amount = float(fields["amount"])
+        if entry["source_type"] == "debt":
+            payment = db.execute("SELECT debt_id FROM debt_payments WHERE entry_id=?", (entry["id"],)).fetchone()
+            if payment:
+                debt = db.execute("SELECT * FROM debts WHERE id=?", (payment["debt_id"],)).fetchone()
+                paid_other = db.execute(
+                    "SELECT COALESCE(SUM(amount),0) AS total FROM debt_payments WHERE debt_id=? AND entry_id!=?",
+                    (payment["debt_id"], entry["id"]),
+                ).fetchone()["total"]
+                if new_amount + float(paid_other) > float(debt["original_amount"]) + 0.000001:
+                    raise HTTPException(400, "Düzenlenen ödemelerin toplamı borcun ilk tutarını aşamaz")
+                db.execute("UPDATE debt_payments SET amount=? WHERE entry_id=?", (new_amount, entry["id"]))
+                db.execute("UPDATE debts SET outstanding=MAX(0,original_amount-(SELECT COALESCE(SUM(amount),0) FROM debt_payments WHERE debt_id=?)) WHERE id=?",
+                           (payment["debt_id"], payment["debt_id"]))
+        else:
+            opening = db.execute("SELECT debt_id FROM debt_openings WHERE entry_id=?", (entry["id"],)).fetchone()
+            if opening:
+                paid = db.execute("SELECT COALESCE(SUM(amount),0) AS total FROM debt_payments WHERE debt_id=?",
+                                  (opening["debt_id"],)).fetchone()["total"]
+                if new_amount + 0.000001 < float(paid):
+                    raise HTTPException(400, "İlk borç tutarı, daha önce yapılan ödemelerin toplamından küçük olamaz")
+                db.execute("UPDATE debts SET original_amount=?,outstanding=? WHERE id=?",
+                           (new_amount, new_amount-float(paid), opening["debt_id"]))
+        updates["amount"] = new_amount
+    elif "amount" in fields:
+        updates["amount"] = float(fields["amount"])
+
+    if "target_amount" in fields and not trade:
+        if entry["entry_type"] != "transfer":
+            raise HTTPException(400, "Hedef tutar yalnızca transferlerde düzenlenebilir")
+        updates["target_amount"] = float(fields["target_amount"])
+
+    if updates:
+        assignments = ", ".join(f"{key}=?" for key in updates)
+        db.execute(f"UPDATE entries SET {assignments} WHERE id=?", (*updates.values(), entry["id"]))
+
+
+@app.patch("/api/entries/{entry_id}")
+def update_entry(entry_id: int, data: EntryUpdate):
+    fields = data.model_dump(exclude_unset=True)
+    if not fields:
+        raise HTTPException(400, "Düzenlenecek alan gönderilmedi")
+    with db_conn() as db:
+        entry = db.execute("SELECT * FROM entries WHERE id=?", (entry_id,)).fetchone()
+        if entry is None:
+            raise HTTPException(404, "İşlem bulunamadı")
+        update_entry_record(db, entry, fields)
+        updated = db.execute("SELECT * FROM entries WHERE id=?", (entry_id,)).fetchone()
+    return {"ok": True, "entry": dict(updated)}
+
+
+@app.get("/api/occurrences")
+def list_occurrences(from_date: date | None = None, to_date: date | None = None):
+    today = date.today()
+    start = from_date or add_months(today.replace(day=1), -6)
+    end = to_date or (add_months(today.replace(day=1), 12) - timedelta(days=1))
+    if end < start:
+        raise HTTPException(400, "Bitiş tarihi başlangıçtan önce olamaz")
+    if (end - start).days > 1100:
+        raise HTTPException(400, "Tek istekte en fazla yaklaşık 3 yıllık dönem listelenebilir")
+    with db_conn() as db:
+        items = collect_occurrences(db, start, end)
+    return items
+
+
+@app.patch("/api/occurrences/{source_type}/{source_id}/{occurrence_key}")
+def update_occurrence(source_type: Literal["schedule", "installment"], source_id: int,
+                      occurrence_key: str, data: OccurrenceUpdate):
+    fields = data.model_dump(exclude_unset=True)
+    if not fields:
+        raise HTTPException(400, "Düzenlenecek alan gönderilmedi")
+    with db_conn() as db:
+        completed = db.execute(
+            """SELECT e.* FROM completed_occurrences c JOIN entries e ON e.id=c.entry_id
+               WHERE c.source_type=? AND c.source_id=? AND c.occurrence_key=?""",
+            (source_type, source_id, occurrence_key),
+        ).fetchone()
+        if completed:
+            patch = {
+                "entry_date": fields.get("due_date"),
+                "amount": fields.get("amount"),
+                "category": fields.get("category"),
+                "description": fields.get("description"),
+            }
+            patch = {k: v for k, v in patch.items() if v is not None}
+            update_entry_record(db, completed, patch)
+            return {"ok": True, "status": "completed", "entry_id": completed["id"]}
+
+        if source_type == "schedule":
+            schedule = db.execute("SELECT * FROM schedules WHERE id=?", (source_id,)).fetchone()
+            if schedule is None:
+                raise HTTPException(404, "Tekrarlanan işlem bulunamadı")
+            try:
+                canonical_date = date.fromisoformat(occurrence_key)
+            except ValueError:
+                raise HTTPException(400, "Tekrarlanan işlem anahtarı geçersiz")
+            if canonical_date not in schedule_dates(schedule, canonical_date, canonical_date):
+                raise HTTPException(404, "Bu tarih tekrarlanan işlem takviminde bulunamadı")
+            base_account_id = schedule["account_id"]
+        else:
+            plan = db.execute("SELECT * FROM installment_plans WHERE id=?", (source_id,)).fetchone()
+            if plan is None:
+                raise HTTPException(404, "Taksit planı bulunamadı")
+            try:
+                no = int(occurrence_key)
+            except ValueError:
+                raise HTTPException(400, "Taksit numarası geçersiz")
+            if no < 1 or no > int(plan["total_installments"]):
+                raise HTTPException(404, "Bu taksit plan içinde bulunamadı")
+            base_account_id = plan["account_id"]
+
+        if "account_id" in fields and fields["account_id"] is not None:
+            ensure_account(db, fields["account_id"])
+        old = occurrence_override(db, source_type, source_id, occurrence_key)
+        values = {
+            "due_date": fields.get("due_date", old.get("due_date")),
+            "amount": fields.get("amount", old.get("amount")),
+            "account_id": fields.get("account_id", old.get("account_id") or base_account_id),
+            "category": fields.get("category", old.get("category")),
+            "description": fields.get("description", old.get("description")),
+        }
+        db.execute(
+            """INSERT INTO occurrence_overrides(source_type,source_id,occurrence_key,due_date,amount,
+               account_id,category,description,updated_at) VALUES(?,?,?,?,?,?,?,?,?)
+               ON CONFLICT(source_type,source_id,occurrence_key) DO UPDATE SET
+               due_date=excluded.due_date,amount=excluded.amount,account_id=excluded.account_id,
+               category=excluded.category,description=excluded.description,updated_at=excluded.updated_at""",
+            (source_type, source_id, occurrence_key,
+             values["due_date"].isoformat() if isinstance(values["due_date"], date) else values["due_date"],
+             values["amount"], values["account_id"], values["category"], values["description"], now_iso()),
+        )
+    return {"ok": True, "status": "pending"}
