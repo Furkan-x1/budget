@@ -114,3 +114,12 @@ html[data-theme="dark"] .app-footer{color:#718176}
 html[data-theme="dark"] .brand-mark{background:#4f8161}
 html[data-theme="dark"] .legend-income{background:#6fa982}
 html[data-theme="dark"] .legend-expense{background:#bd786e}
+
+html[data-theme="dark"] .button.primary{background:#467a57;color:#f4fbf5}
+html[data-theme="dark"] .button.primary:hover{background:#568b67}
+html[data-theme="dark"] .small-link{color:#a4d1b0}
+html[data-theme="dark"] .text-button{color:#9cab9f}
+html[data-theme="dark"] .text-button:hover{color:#c1dfc8}
+html[data-theme="dark"] .eyebrow{color:#8fa293}
+html[data-theme="dark"] .date-input::placeholder,
+html[data-theme="dark"] [data-date-input]::placeholder{color:#748578}
