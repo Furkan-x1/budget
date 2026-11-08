@@ -119,7 +119,7 @@ function renderDashboardGoals(goals){
       '<div class="progress-track"><div class="progress-fill" style="width:'+percent+'%"></div></div>'+
       '<div class="schedule-sub">'+status+'</div>'+
     '</div>';
-  }).join('')+(goals.length>4?'<div class="dashboard-goal-more">'+(goals.length-4)+' hedef daha · <button class="small-link" data-page-link="goals">Tümünü gör →</button></div>':'');
+  }).join('');
 }
 function renderIncomeHistoryChart(monthly,target){
   const el=$(target);
