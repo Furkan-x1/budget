@@ -121,6 +121,20 @@ function renderDashboardGoals(goals){
     '</div>';
   }).join('');
 }
+async function loadMonthOutlook(month){
+  const data=await api(`/api/month-outlook?month=${encodeURIComponent(month)}`);
+  $('#outlook-month').value=data.month;
+  $('#outlook-month-label').textContent=`${monthLabel(data.month)} ayı tahmini net`;
+  const net=$('#outlook-net-value');net.textContent=fmtTRY(data.projected_net);net.classList.toggle('positive',data.projected_net>=0);net.classList.toggle('negative',data.projected_net<0);
+  $('#outlook-income').textContent=fmtTRY(data.total_income);
+  $('#outlook-expense').textContent=fmtTRY(data.total_expense);
+  $('#outlook-income-detail').textContent=`Gerçekleşen ${fmtTRY(data.actual_income)} · Planlanan ${fmtTRY(data.planned_income)}`;
+  $('#outlook-expense-detail').textContent=`Gerçekleşen ${fmtTRY(data.actual_expense)} · Planlanan ${fmtTRY(data.planned_expense)}`;
+  const max=Math.max(1,data.total_income,data.total_expense);
+  $('#outlook-income-bar').style.width=(data.total_income/max*100)+'%';
+  $('#outlook-expense-bar').style.width=(data.total_expense/max*100)+'%';
+  $('#outlook-foot').textContent=`${data.planned_count} bekleyen planlı işlem dahil${data.quote_stale?' · Bazı döviz/altın kurları eski':''}`;
+}
 async function loadDashboard(){
   const [d,a,goals]=await Promise.all([api(`/api/dashboard?month=${state.month}`),api(`/api/analytics?month=${state.month}&months=12`),api('/api/goals')]);
   $('#total-net-worth').textContent=fmtTRY(d.total_net_worth);$('#month-income').textContent=fmtTRY(d.income);$('#month-expense').textContent=fmtTRY(d.expense);$('#forecast-net').textContent=fmtTRY(d.forecast_net);
@@ -133,6 +147,7 @@ async function loadDashboard(){
   renderDashboardGoals(goals);
   $('#dashboard-networth-current').textContent=fmtTRY(d.total_net_worth);
   renderNetWorthChart(a.net_worth_history,'#dashboard-networth-chart');
+  await loadMonthOutlook($('#outlook-month').value||localDate().slice(0,7));
 }
 async function loadEntries(){const entries=await api(`/api/entries?month=${state.month}&limit=300`);state.entriesById=Object.fromEntries(entries.map(e=>[e.id,e]));$('#entry-count').textContent=`${entries.length} kayıt`;$('#all-entries').innerHTML=entries.length?entries.map(e=>entryRow(e,true)).join(''):'<div class="empty-state">Bu ay henüz işlem yok.</div>'}
 
@@ -264,6 +279,10 @@ async function loadCategories(){
 }
 async function refreshAll(){await loadAccounts();await loadDashboard();if(state.page==='transactions')await loadEntries();if(state.page==='plans')await loadPlans();if(state.page==='debts')await loadDebts();if(state.page==='goals')await loadGoals();if(state.page==='reports')await loadAnalytics();if(state.page==='categories')await loadCategories()}
 
+$('#outlook-month').value=localDate().slice(0,7);
+$('#outlook-month').addEventListener('change',e=>{if(e.target.value)loadMonthOutlook(e.target.value).catch(err=>toast(err.message))});
+$('#outlook-prev').addEventListener('click',()=>{const m=$('#outlook-month').value||localDate().slice(0,7);$('#outlook-month').value=isoMonthOffset(m,-1);loadMonthOutlook($('#outlook-month').value).catch(err=>toast(err.message))});
+$('#outlook-next').addEventListener('click',()=>{const m=$('#outlook-month').value||localDate().slice(0,7);$('#outlook-month').value=isoMonthOffset(m,1);loadMonthOutlook($('#outlook-month').value).catch(err=>toast(err.message))});
 $('#schedule-start').addEventListener('change',e=>{try{if(e.target.value)$('#schedule-day').value=Number(toISODate(e.target.value).slice(-2))}catch{}});
 $('#global-month').value=state.month;$('#global-month').addEventListener('change',async e=>{state.month=e.target.value;await loadDashboard();if(state.page==='transactions')await loadEntries();if(state.page==='reports')await loadAnalytics();if(state.page==='plans')await loadPlans()});
 $$('.nav-item').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));$$('[data-go]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.go)));$$('[data-page-link]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.pageLink)));
