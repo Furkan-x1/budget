@@ -288,12 +288,23 @@ def month_outlook(month: str | None = None):
         for row in rows:
             actual[row["entry_type"]] += amount_to_try(row["asset_code"], float(row["amount"]), quotes)
         planned = collect_planned(db, month_start, month_end)
-        accounts = {row["id"]: row for row in db.execute("SELECT id,asset_code FROM accounts").fetchall()}
+        accounts = {row["id"]: row for row in db.execute("SELECT id,name,asset_code FROM accounts").fetchall()}
         expected = {"income": 0.0, "expense": 0.0}
+        planned_details = {"income": [], "expense": []}
         for item in planned:
             account = accounts.get(item["account_id"])
             if account and item["entry_type"] in expected:
-                expected[item["entry_type"]] += amount_to_try(account["asset_code"], float(item["amount"]), quotes)
+                amount_try = amount_to_try(account["asset_code"], float(item["amount"]), quotes)
+                expected[item["entry_type"]] += amount_try
+                planned_details[item["entry_type"]].append({
+                    "description": item["description"],
+                    "due_date": item["due_date"],
+                    "category": item.get("category") or "",
+                    "account_name": account["name"],
+                    "amount": round(float(item["amount"]), 2),
+                    "asset_code": account["asset_code"],
+                    "amount_try": round(amount_try, 2),
+                })
     income = actual["income"] + expected["income"]
     expense = actual["expense"] + expected["expense"]
     return {
@@ -306,6 +317,8 @@ def month_outlook(month: str | None = None):
         "total_expense": round(expense, 2),
         "projected_net": round(income - expense, 2),
         "planned_count": len(planned),
+        "planned_income_items": planned_details["income"],
+        "planned_expense_items": planned_details["expense"],
         "quote_stale": any(q["is_stale"] for code, q in quotes.items() if code != "TRY"),
     }
 
