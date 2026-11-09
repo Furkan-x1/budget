@@ -232,6 +232,16 @@ class BudgetApiSmokeTest(unittest.TestCase):
         balance_after_revert = next(a for a in client.get("/api/accounts").json() if a["id"] == bank)["balance"]
         self.assertAlmostEqual(balance_after_revert, balance_before_completion)
 
+        # Month outlook combines actual entries and pending scheduled income/expenses.
+        outlook = client.get("/api/month-outlook?month=2026-12")
+        self.assertEqual(outlook.status_code, 200, outlook.text)
+        outlook_data = outlook.json()
+        self.assertIn("actual_income", outlook_data)
+        self.assertIn("planned_income", outlook_data)
+        self.assertIn("total_expense", outlook_data)
+        self.assertAlmostEqual(outlook_data["projected_net"], outlook_data["total_income"] - outlook_data["total_expense"])
+        self.assertGreaterEqual(outlook_data["planned_count"], 1)
+
         # The same occurrence can be marked as completed again after reversing it.
         completed_again = client.post(f"/api/installments/{future_plan_id}/complete", json={
             "occurrence_key": "1",
