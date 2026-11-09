@@ -241,6 +241,14 @@ class BudgetApiSmokeTest(unittest.TestCase):
         self.assertIn("total_expense", outlook_data)
         self.assertAlmostEqual(outlook_data["projected_net"], outlook_data["total_income"] - outlook_data["total_expense"])
         self.assertGreaterEqual(outlook_data["planned_count"], 1)
+        self.assertIn("planned_income_items", outlook_data)
+        self.assertIn("planned_expense_items", outlook_data)
+        future_plan_detail = next(
+            item for item in outlook_data["planned_expense_items"]
+            if item["description"] == "Gelecek tarihli alışveriş · 1/3"
+        )
+        self.assertEqual(future_plan_detail["amount_try"], 1000)
+        self.assertEqual(future_plan_detail["account_name"], "TRY banka")
 
         # The same occurrence can be marked as completed again after reversing it.
         completed_again = client.post(f"/api/installments/{future_plan_id}/complete", json={
