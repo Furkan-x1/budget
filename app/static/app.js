@@ -281,8 +281,8 @@ async function refreshAll(){await loadAccounts();await loadDashboard();if(state.
 
 $('#outlook-month').value=localDate().slice(0,7);
 $('#outlook-month').addEventListener('change',e=>{if(e.target.value)loadMonthOutlook(e.target.value).catch(err=>toast(err.message))});
-$('#outlook-prev').addEventListener('click',()=>{const m=$('#outlook-month').value||localDate().slice(0,7);$('#outlook-month').value=isoMonthOffset(m,-1);loadMonthOutlook($('#outlook-month').value).catch(err=>toast(err.message))});
-$('#outlook-next').addEventListener('click',()=>{const m=$('#outlook-month').value||localDate().slice(0,7);$('#outlook-month').value=isoMonthOffset(m,1);loadMonthOutlook($('#outlook-month').value).catch(err=>toast(err.message))});
+$('#outlook-prev').addEventListener('click',()=>{const m=$('#outlook-month').value||localDate().slice(0,7);$('#outlook-month').value=isoMonthOffset(m,-1).slice(0,7);loadMonthOutlook($('#outlook-month').value).catch(err=>toast(err.message))});
+$('#outlook-next').addEventListener('click',()=>{const m=$('#outlook-month').value||localDate().slice(0,7);$('#outlook-month').value=isoMonthOffset(m,1).slice(0,7);loadMonthOutlook($('#outlook-month').value).catch(err=>toast(err.message))});
 $('#schedule-start').addEventListener('change',e=>{try{if(e.target.value)$('#schedule-day').value=Number(toISODate(e.target.value).slice(-2))}catch{}});
 $('#global-month').value=state.month;$('#global-month').addEventListener('change',async e=>{state.month=e.target.value;await loadDashboard();if(state.page==='transactions')await loadEntries();if(state.page==='reports')await loadAnalytics();if(state.page==='plans')await loadPlans()});
 $$('.nav-item').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));$$('[data-go]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.go)));$$('[data-page-link]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.pageLink)));
