@@ -242,3 +242,17 @@ html[data-theme="dark"] .daily-bar.expense{background:#bd786e}
 #outlook-expense-bar{background:#d48b80}
 .outlook-foot{font-size:9px;color:var(--muted);margin-top:8px}
 @media(max-width:620px){.outlook-net strong{font-size:21px}.outlook-breakdown{gap:8px}.outlook-breakdown strong{font-size:14px}.month-outlook-picker input{max-width:125px}}
+
+
+/* Expandable planned items in month outlook */
+.outlook-breakdown-heading{display:flex;flex-direction:column;align-items:flex-start;gap:5px}
+.outlook-expand{align-self:flex-start;border:0;background:transparent;color:var(--accent);font:inherit;font-size:9px;padding:3px 0;cursor:pointer}
+.outlook-expand span{display:inline-block;margin-left:3px}
+.outlook-items{display:grid;gap:0;margin-top:5px;border-top:1px solid var(--line)}
+.outlook-item{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.outlook-item-main{display:flex;flex-direction:column;gap:3px;min-width:0}
+.outlook-item-main strong{font-size:10px;color:var(--ink);overflow-wrap:anywhere}
+.outlook-item-main span{font-size:9px;color:var(--muted);line-height:1.4}
+.outlook-item-amount{font-size:10px;white-space:nowrap;color:var(--ink)}
+.outlook-items-empty{font-size:9px;color:var(--muted);padding:9px 0}
+@media(max-width:620px){.outlook-item{gap:6px}.outlook-item-amount{font-size:9px}}
