@@ -121,6 +121,17 @@ function renderDashboardGoals(goals){
     '</div>';
   }).join('');
 }
+function renderOutlookItems(items){
+  if(!items?.length)return '<div class="outlook-items-empty">Bu ay için bekleyen plan yok.</div>';
+  return items.map(item=>`<div class="outlook-item"><div class="outlook-item-main"><strong>${esc(item.description)}</strong><span>${dateLabel(item.due_date)} · ${esc(item.category||'Kategorisiz')} · ${esc(item.account_name)}</span></div><strong class="outlook-item-amount">${fmtTRY(item.amount_try)}</strong></div>`).join('');
+}
+function setOutlookItemsExpanded(type,expanded){
+  const button=$(`#outlook-${type}-toggle`),panel=$(`#outlook-${type}-items`);
+  if(!button||!panel)return;
+  button.setAttribute('aria-expanded',String(expanded));
+  button.innerHTML=expanded?'Planları gizle <span>⌃</span>':'Planları göster <span>⌄</span>';
+  panel.classList.toggle('hidden',!expanded);
+}
 async function loadMonthOutlook(month){
   const data=await api(`/api/month-outlook?month=${encodeURIComponent(month)}`);
   $('#outlook-month').value=data.month;
@@ -130,6 +141,9 @@ async function loadMonthOutlook(month){
   $('#outlook-expense').textContent=fmtTRY(data.total_expense);
   $('#outlook-income-detail').textContent=`Gerçekleşen ${fmtTRY(data.actual_income)} · Planlanan ${fmtTRY(data.planned_income)}`;
   $('#outlook-expense-detail').textContent=`Gerçekleşen ${fmtTRY(data.actual_expense)} · Planlanan ${fmtTRY(data.planned_expense)}`;
+  $('#outlook-income-items').innerHTML=renderOutlookItems(data.planned_income_items);
+  $('#outlook-expense-items').innerHTML=renderOutlookItems(data.planned_expense_items);
+  setOutlookItemsExpanded('income',false);setOutlookItemsExpanded('expense',false);
   const max=Math.max(1,data.total_income,data.total_expense);
   $('#outlook-income-bar').style.width=(data.total_income/max*100)+'%';
   $('#outlook-expense-bar').style.width=(data.total_expense/max*100)+'%';
@@ -280,6 +294,8 @@ async function loadCategories(){
 async function refreshAll(){await loadAccounts();await loadDashboard();if(state.page==='transactions')await loadEntries();if(state.page==='plans')await loadPlans();if(state.page==='debts')await loadDebts();if(state.page==='goals')await loadGoals();if(state.page==='reports')await loadAnalytics();if(state.page==='categories')await loadCategories()}
 
 $('#outlook-month').value=localDate().slice(0,7);
+$('#outlook-income-toggle').addEventListener('click',()=>setOutlookItemsExpanded('income',$('#outlook-income-toggle').getAttribute('aria-expanded')!=='true'));
+$('#outlook-expense-toggle').addEventListener('click',()=>setOutlookItemsExpanded('expense',$('#outlook-expense-toggle').getAttribute('aria-expanded')!=='true'));
 $('#outlook-month').addEventListener('change',e=>{if(e.target.value)loadMonthOutlook(e.target.value).catch(err=>toast(err.message))});
 $('#outlook-prev').addEventListener('click',()=>{const m=$('#outlook-month').value||localDate().slice(0,7);$('#outlook-month').value=isoMonthOffset(m,-1).slice(0,7);loadMonthOutlook($('#outlook-month').value).catch(err=>toast(err.message))});
 $('#outlook-next').addEventListener('click',()=>{const m=$('#outlook-month').value||localDate().slice(0,7);$('#outlook-month').value=isoMonthOffset(m,1).slice(0,7);loadMonthOutlook($('#outlook-month').value).catch(err=>toast(err.message))});
