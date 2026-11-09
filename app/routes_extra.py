@@ -266,6 +266,50 @@ def uncomplete_occurrence(source_type: Literal["schedule", "installment"], sourc
     return {"ok": True, "status": "pending"}
 
 
+@app.get("/api/month-outlook")
+def month_outlook(month: str | None = None):
+    selected = month or date.today().strftime("%Y-%m")
+    try:
+        month_start = date.fromisoformat(selected + "-01")
+    except ValueError:
+        raise HTTPException(400, "Ay YYYY-AA formatında olmalı")
+    month_end = add_months(month_start, 1) - timedelta(days=1)
+    excluded_categories = ("Borç ödemesi", "Borç tahsilatı", "Borç alınan para", "Verilen borç")
+    with db_conn() as db:
+        quotes = get_quote_map(db)
+        rows = db.execute(
+            """SELECT e.entry_type,e.amount,a.asset_code FROM entries e
+               JOIN accounts a ON a.id=e.account_id
+               WHERE substr(e.entry_date,1,7)=? AND e.entry_type IN ('income','expense')
+               AND COALESCE(e.category,'') NOT IN (?,?,?,?)""",
+            (selected, *excluded_categories),
+        ).fetchall()
+        actual = {"income": 0.0, "expense": 0.0}
+        for row in rows:
+            actual[row["entry_type"]] += amount_to_try(row["asset_code"], float(row["amount"]), quotes)
+        planned = collect_planned(db, month_start, month_end)
+        accounts = {row["id"]: row for row in db.execute("SELECT id,asset_code FROM accounts").fetchall()}
+        expected = {"income": 0.0, "expense": 0.0}
+        for item in planned:
+            account = accounts.get(item["account_id"])
+            if account and item["entry_type"] in expected:
+                expected[item["entry_type"]] += amount_to_try(account["asset_code"], float(item["amount"]), quotes)
+    income = actual["income"] + expected["income"]
+    expense = actual["expense"] + expected["expense"]
+    return {
+        "month": selected,
+        "actual_income": round(actual["income"], 2),
+        "actual_expense": round(actual["expense"], 2),
+        "planned_income": round(expected["income"], 2),
+        "planned_expense": round(expected["expense"], 2),
+        "total_income": round(income, 2),
+        "total_expense": round(expense, 2),
+        "projected_net": round(income - expense, 2),
+        "planned_count": len(planned),
+        "quote_stale": any(q["is_stale"] for code, q in quotes.items() if code != "TRY"),
+    }
+
+
 @app.get("/api/analytics")
 def analytics(month: str | None = None, months: int = 12):
     selected = month or date.today().strftime("%Y-%m")
