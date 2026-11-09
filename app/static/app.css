@@ -220,3 +220,25 @@ html[data-theme="dark"] .daily-bar.expense{background:#bd786e}
   .history-panel .panel-heading{align-items:flex-start}
   .dashboard-current-value strong{font-size:11px}
 }
+
+/* Dashboard month-end outlook widget */
+.month-outlook-panel{grid-column:1/-1}
+.month-outlook-picker{display:flex;align-items:center;gap:6px}
+.month-outlook-picker input{max-width:142px;border:1px solid var(--line);border-radius:8px;padding:7px 9px;background:var(--surface);color:var(--ink);font:inherit;font-size:10px}
+.outlook-net{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0 15px}
+.outlook-net span{font-size:11px;color:var(--muted)}
+.outlook-net strong{font-size:25px;letter-spacing:-.8px;color:var(--green)}
+.outlook-net strong.negative{color:var(--red)}
+.outlook-breakdown{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.outlook-breakdown>div{display:flex;flex-direction:column;gap:5px;min-width:0}
+.outlook-breakdown span{font-size:10px;color:var(--muted)}
+.outlook-breakdown strong{font-size:16px}
+.outlook-breakdown strong.positive{color:var(--green)}
+.outlook-breakdown strong.negative{color:var(--red)}
+.outlook-breakdown small{font-size:9px;color:var(--muted)}
+.outlook-bar{height:9px;display:flex;overflow:hidden;border-radius:10px;background:var(--line);margin-top:15px}
+.outlook-bar span{height:100%;display:block;transition:width .2s}
+#outlook-income-bar{background:#78a98a}
+#outlook-expense-bar{background:#d48b80}
+.outlook-foot{font-size:9px;color:var(--muted);margin-top:8px}
+@media(max-width:620px){.outlook-net strong{font-size:21px}.outlook-breakdown{gap:8px}.outlook-breakdown strong{font-size:14px}.month-outlook-picker input{max-width:125px}}
