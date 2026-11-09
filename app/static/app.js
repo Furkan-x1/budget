@@ -129,7 +129,7 @@ function setOutlookItemsExpanded(type,expanded){
   const button=$(`#outlook-${type}-toggle`),panel=$(`#outlook-${type}-items`);
   if(!button||!panel)return;
   button.setAttribute('aria-expanded',String(expanded));
-  button.innerHTML=expanded?'Planları gizle <span>⌃</span>':'Planları göster <span>⌄</span>';
+  button.textContent=expanded?'Planları gizle ↑':'Planları göster →';
   panel.classList.toggle('hidden',!expanded);
 }
 async function loadMonthOutlook(month){
@@ -143,7 +143,6 @@ async function loadMonthOutlook(month){
   $('#outlook-expense-detail').textContent=`Gerçekleşen ${fmtTRY(data.actual_expense)} · Planlanan ${fmtTRY(data.planned_expense)}`;
   $('#outlook-income-items').innerHTML=renderOutlookItems(data.planned_income_items);
   $('#outlook-expense-items').innerHTML=renderOutlookItems(data.planned_expense_items);
-  setOutlookItemsExpanded('income',false);setOutlookItemsExpanded('expense',false);
   const max=Math.max(1,data.total_income,data.total_expense);
   $('#outlook-income-bar').style.width=(data.total_income/max*100)+'%';
   $('#outlook-expense-bar').style.width=(data.total_expense/max*100)+'%';
